@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">tiny-family-expenses</string>
+    <string name="title_activity_main">tiny-family-expenses</string>
+    <string name="package_name">com.tinyfamilyexpenses.app</string>
+    <string name="custom_url_scheme">com.tinyfamilyexpenses.app</string>
+</resources>
