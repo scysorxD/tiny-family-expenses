@@ -1,3 +1,4 @@
+# Spanish
 # Especificación completa - App de gastos familiares compartidos
 
 ## 1. Objetivo del documento
