@@ -1,4 +1,4 @@
-import { formatAmount } from './currency.utils';
+import { formatAmount, formatRoomAmount, localeForCurrency } from './currency.utils';
 
 describe('formatAmount', () => {
   it('formats whole amounts with the requested currency', () => {
@@ -16,5 +16,28 @@ describe('formatAmount', () => {
     expect(() => formatAmount(Number.NaN, 'ARS')).toThrowError(
       'Cannot format a non-finite amount.',
     );
+  });
+
+  it('honours an explicit locale', () => {
+    const formatted = formatAmount(1234.5, 'EUR', 'de-DE');
+    expect(formatted).toContain('1.234,50');
+  });
+});
+
+describe('localeForCurrency', () => {
+  it('maps known currencies to regional locales', () => {
+    expect(localeForCurrency('ARS')).toBe('es-AR');
+    expect(localeForCurrency('brl')).toBe('pt-BR');
+  });
+
+  it('falls back to en-US for unknown currencies', () => {
+    expect(localeForCurrency('XYZ')).toBe('en-US');
+  });
+});
+
+describe('formatRoomAmount', () => {
+  it('formats using the currency-specific locale', () => {
+    expect(() => formatRoomAmount(1000, 'ARS')).not.toThrow();
+    expect(formatRoomAmount(1000, 'ARS')).toContain('1.000');
   });
 });
