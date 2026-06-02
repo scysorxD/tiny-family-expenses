@@ -10,7 +10,7 @@ import {
 })
 export class LocalDatabaseService {
   private static readonly databaseName = 'tiny_family_expenses';
-  private static readonly schemaVersion = 1;
+  private static readonly schemaVersion = 2;
 
   private readonly sqlite = new SQLiteConnection(CapacitorSQLite);
   private database?: SQLiteDBConnection;
@@ -65,6 +65,11 @@ export class LocalDatabaseService {
     if (currentVersion < 1) {
       await this.applyVersion1Schema(database);
       await this.setCurrentSchemaVersion(1);
+    }
+
+    if (currentVersion < 2) {
+      await this.applyVersion2Schema(database);
+      await this.setCurrentSchemaVersion(2);
     }
   }
 
@@ -130,6 +135,26 @@ export class LocalDatabaseService {
       'CREATE INDEX IF NOT EXISTS idx_local_expenses_room_date ON expenses(room_id, expense_date);',
       'CREATE INDEX IF NOT EXISTS idx_local_expenses_sync_status ON expenses(sync_status);',
       'CREATE INDEX IF NOT EXISTS idx_local_sync_queue_status_created ON sync_queue(status, created_at);',
+    ];
+
+    for (const statement of statements) {
+      await database.execute(statement);
+    }
+  }
+
+  private async applyVersion2Schema(database: SQLiteDBConnection): Promise<void> {
+    const statements = [
+      `
+        CREATE TABLE IF NOT EXISTS beneficiaries (
+          id TEXT PRIMARY KEY,
+          room_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          cached_at TEXT NOT NULL
+        );
+      `,
+      'CREATE INDEX IF NOT EXISTS idx_local_beneficiaries_room_active ON beneficiaries(room_id, is_active);',
+      `ALTER TABLE categories ADD COLUMN cached_at TEXT;`,
     ];
 
     for (const statement of statements) {

@@ -1,0 +1,13 @@
+# Supabase local project configuration.
+# Apply migrations with: supabase db push  (or paste each file into the SQL editor in order).
+project_id = "tiny-family-expenses"
+
+[db]
+major_version = 15
+
+[auth]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
