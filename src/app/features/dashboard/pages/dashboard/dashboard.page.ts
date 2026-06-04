@@ -2,16 +2,13 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonBackButton,
-  IonBadge,
   IonButtons,
   IonContent,
   IonHeader,
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
   IonSpinner,
-  IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -20,6 +17,7 @@ import { DashboardService, MonthlyTotal } from '../../../../core/services/dashbo
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
 import { RoomService } from '../../../../core/services/room.service';
+import { StatusPillComponent } from '../../../../shared/ui';
 import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../../../shared/utils';
 
 @Component({
@@ -33,47 +31,56 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
         <ion-title>Dashboard</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else {
-        <ion-text color="medium"><p>{{ currentLabel }}</p></ion-text>
-        <ion-text color="primary"><h1 class="total">{{ format(currentTotal()) }}</h1></ion-text>
-        <ion-note>Monthly average: {{ format(average()) }}</ion-note>
+        <div class="page-pad">
+          <div class="hero-card">
+            <p class="label-muted">{{ currentLabel }}</p>
+            <div class="amount-hero">{{ format(currentTotal()) }}</div>
+            <p class="label-muted">Monthly average: {{ format(average()) }}</p>
+          </div>
 
-        <ion-text><h3 class="ion-margin-top">Pending collection</h3></ion-text>
-        @if (pending().length === 0) {
-          <ion-note>Nothing pending. All closed months are fully paid.</ion-note>
-        } @else {
-          <ion-list>
-            @for (period of pending(); track period.id) {
-              <ion-item button (click)="openCollections(period.monthKey)">
-                <ion-label>{{ label(period.monthKey) }}</ion-label>
-                <ion-badge slot="end" [color]="period.status === 'partially_paid' ? 'warning' : 'medium'">
-                  {{ statusLabel(period) }}
-                </ion-badge>
-              </ion-item>
-            }
-          </ion-list>
-        }
+          <h2 class="section-title">Pending collection</h2>
+          @if (pending().length === 0) {
+            <div class="app-card text-muted">Nothing pending. All closed months are fully paid.</div>
+          } @else {
+            <div class="list-card">
+              <ion-list>
+                @for (period of pending(); track period.id) {
+                  <ion-item button detail="false" (click)="openCollections(period.monthKey)">
+                    <ion-label>{{ label(period.monthKey) }}</ion-label>
+                    <app-status-pill
+                      slot="end"
+                      [label]="statusLabel(period)"
+                      [tone]="period.status === 'partially_paid' ? 'warning' : 'muted'"
+                    ></app-status-pill>
+                  </ion-item>
+                }
+              </ion-list>
+            </div>
+          }
 
-        <ion-text><h3 class="ion-margin-top">Recent months</h3></ion-text>
-        @if (totals().length === 0) {
-          <ion-note>No expenses recorded yet.</ion-note>
-        } @else {
-          <ion-list>
-            @for (item of totals(); track item.monthKey) {
-              <ion-item>
-                <ion-label>{{ label(item.monthKey) }}</ion-label>
-                <ion-text slot="end">{{ format(item.total) }}</ion-text>
-              </ion-item>
-            }
-          </ion-list>
-        }
+          <h2 class="section-title">Recent months</h2>
+          @if (totals().length === 0) {
+            <div class="app-card text-muted">No expenses recorded yet.</div>
+          } @else {
+            <div class="list-card">
+              <ion-list>
+                @for (item of totals(); track item.monthKey) {
+                  <ion-item>
+                    <ion-label>{{ label(item.monthKey) }}</ion-label>
+                    <span slot="end" class="row-amount">{{ format(item.total) }}</span>
+                  </ion-item>
+                }
+              </ion-list>
+            </div>
+          }
+        </div>
       }
     </ion-content>
   `,
-  styles: [`.total { margin: 4px 0; font-size: 2rem; font-weight: 700; }`],
   imports: [
     IonHeader,
     IonToolbar,
@@ -84,10 +91,8 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     IonList,
     IonItem,
     IonLabel,
-    IonBadge,
-    IonNote,
-    IonText,
     IonSpinner,
+    StatusPillComponent,
   ],
 })
 export class DashboardPage {

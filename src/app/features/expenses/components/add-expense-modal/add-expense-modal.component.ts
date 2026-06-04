@@ -7,10 +7,9 @@ import {
   IonChip,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
-  IonItem,
   IonLabel,
-  IonList,
   IonNote,
   IonSegment,
   IonSegmentButton,
@@ -27,6 +26,7 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { ExpenseService } from '../../../../core/services/expense.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
+import { CategoryIconComponent } from '../../../../shared/ui';
 import { describeError, monthKeyFromDateString, todayDateString } from '../../../../shared/utils';
 
 const BOTH = 'both';
@@ -39,147 +39,205 @@ const BOTH = 'both';
         <ion-buttons slot="start">
           <ion-button (click)="cancel()">Cancel</ion-button>
         </ion-buttons>
-        <ion-title>{{ isEdit ? 'Edit expense' : 'New expense' }}</ion-title>
+        <ion-title>{{ isEdit ? 'Edit expense' : 'Add expense' }}</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else {
-        <ion-label class="field-label">Category</ion-label>
-        @if (suggested().length > 0) {
-          <div class="chips">
-            @for (cat of suggested(); track cat.id) {
-              <ion-chip
-                [color]="selectedCategoryId() === cat.id ? 'primary' : undefined"
-                (click)="selectCategory(cat.id)"
-              >
-                {{ cat.name }}
-              </ion-chip>
-            }
-          </div>
-        }
-        <ion-list>
-          <ion-item>
-            <ion-select
-              label="All categories"
-              labelPlacement="stacked"
-              [value]="selectedCategoryId()"
-              (ionChange)="selectCategory($any($event).detail.value)"
-            >
-              @for (cat of categories(); track cat.id) {
-                <ion-select-option [value]="cat.id">{{ cat.name }}</ion-select-option>
-              }
-            </ion-select>
-          </ion-item>
-        </ion-list>
-
-        @if (creatingCategory()) {
-          <ion-item>
-            <ion-input
-              label="New category"
-              labelPlacement="stacked"
-              [(ngModel)]="newCategoryName"
-              placeholder="e.g. Pharmacy"
-            ></ion-input>
-            <ion-button slot="end" fill="clear" (click)="createCategory()">Add</ion-button>
-          </ion-item>
-        } @else {
-          <ion-button size="small" fill="clear" (click)="creatingCategory.set(true)">
-            + Create new category
-          </ion-button>
-        }
-
-        <ion-list>
-          <ion-item>
+        <div class="page-pad">
+          <div class="amount-block">
+            <p class="label-muted">Amount</p>
             <ion-input
               #amountInput
-              label="Amount"
-              labelPlacement="stacked"
+              class="amount-field"
               type="number"
               inputmode="decimal"
               min="0"
               placeholder="0"
               [(ngModel)]="amount"
             ></ion-input>
-          </ion-item>
-        </ion-list>
-
-        @if (beneficiaryMode() === 'two') {
-          <ion-label class="field-label">Applies to</ion-label>
-          <ion-segment [value]="twoSegmentValue()" (ionChange)="onTwoSegment($any($event).detail.value)">
-            <ion-segment-button [value]="bothValue">
-              <ion-label>Both</ion-label>
-            </ion-segment-button>
-            @for (ben of beneficiaries(); track ben.id) {
-              <ion-segment-button [value]="ben.id">
-                <ion-label>{{ ben.name }}</ion-label>
-              </ion-segment-button>
-            }
-          </ion-segment>
-        } @else if (beneficiaryMode() === 'multi') {
-          <ion-label class="field-label">Applies to</ion-label>
-          <div class="chips">
-            @for (ben of beneficiaries(); track ben.id) {
-              <ion-chip
-                [color]="isBeneficiarySelected(ben.id) ? 'primary' : undefined"
-                (click)="toggleBeneficiary(ben.id)"
-              >
-                {{ ben.name }}
-              </ion-chip>
-            }
+            <span class="currency-pill">{{ currency }}</span>
           </div>
-        }
 
-        <ion-list>
-          <ion-item>
-            <ion-input
-              label="Date"
-              labelPlacement="stacked"
-              type="date"
-              [(ngModel)]="expenseDate"
-            ></ion-input>
-          </ion-item>
-          <ion-item>
-            <ion-textarea
-              label="Description (optional)"
-              labelPlacement="stacked"
-              [(ngModel)]="description"
-              autoGrow="true"
-            ></ion-textarea>
-          </ion-item>
-        </ion-list>
-
-        @if (beneficiaries().length === 0) {
-          <ion-note color="danger">This room has no active beneficiaries. Add one in settings.</ion-note>
-        }
-
-        <ion-button class="ion-margin-top" expand="block" (click)="save()" [disabled]="saving()">
-          @if (saving()) {
-            <ion-spinner name="dots"></ion-spinner>
-          } @else {
-            Save
+          <h2 class="field-label">Category</h2>
+          @if (suggested().length > 0) {
+            <div class="cat-scroll">
+              @for (cat of suggested(); track cat.id) {
+                <button
+                  type="button"
+                  class="cat-chip"
+                  [class.selected]="selectedCategoryId() === cat.id"
+                  (click)="selectCategory(cat.id)"
+                >
+                  <app-category-icon [name]="cat.name"></app-category-icon>
+                  <span>{{ cat.name }}</span>
+                </button>
+              }
+            </div>
           }
-        </ion-button>
-        @if (!isEdit) {
-          <ion-button expand="block" fill="outline" (click)="saveAndAddAnother()" [disabled]="saving()">
-            Save and add another
+          <ion-select
+            fill="outline"
+            label="All categories"
+            labelPlacement="stacked"
+            [value]="selectedCategoryId()"
+            (ionChange)="selectCategory($any($event).detail.value)"
+          >
+            @for (cat of categories(); track cat.id) {
+              <ion-select-option [value]="cat.id">{{ cat.name }}</ion-select-option>
+            }
+          </ion-select>
+
+          @if (creatingCategory()) {
+            <div class="create-row">
+              <ion-input
+                fill="outline"
+                label="New category"
+                labelPlacement="stacked"
+                [(ngModel)]="newCategoryName"
+                placeholder="e.g. Pharmacy"
+              ></ion-input>
+              <ion-button (click)="createCategory()">Add</ion-button>
+            </div>
+          } @else {
+            <span class="link-action create-link" (click)="creatingCategory.set(true)">
+              <ion-icon name="add"></ion-icon> Create new category
+            </span>
+          }
+
+          @if (beneficiaryMode() === 'two') {
+            <h2 class="field-label">Applies to</h2>
+            <ion-segment [value]="twoSegmentValue()" (ionChange)="onTwoSegment($any($event).detail.value)">
+              <ion-segment-button [value]="bothValue">
+                <ion-label>Both</ion-label>
+              </ion-segment-button>
+              @for (ben of beneficiaries(); track ben.id) {
+                <ion-segment-button [value]="ben.id">
+                  <ion-label>{{ ben.name }}</ion-label>
+                </ion-segment-button>
+              }
+            </ion-segment>
+          } @else if (beneficiaryMode() === 'multi') {
+            <h2 class="field-label">Applies to</h2>
+            <div class="chips">
+              @for (ben of beneficiaries(); track ben.id) {
+                <ion-chip
+                  [color]="isBeneficiarySelected(ben.id) ? 'primary' : undefined"
+                  (click)="toggleBeneficiary(ben.id)"
+                >
+                  {{ ben.name }}
+                </ion-chip>
+              }
+            </div>
+          }
+
+          <h2 class="field-label">Date</h2>
+          <ion-input fill="outline" type="date" [(ngModel)]="expenseDate"></ion-input>
+
+          <h2 class="field-label">Description (optional)</h2>
+          <ion-textarea
+            fill="outline"
+            [(ngModel)]="description"
+            placeholder="Add a note..."
+            autoGrow="true"
+          ></ion-textarea>
+
+          @if (beneficiaries().length === 0) {
+            <ion-note color="danger">This room has no active beneficiaries. Add one in settings.</ion-note>
+          }
+
+          <ion-button class="save-btn" expand="block" (click)="save()" [disabled]="saving()">
+            @if (saving()) {
+              <ion-spinner name="dots"></ion-spinner>
+            } @else {
+              Save expense
+            }
           </ion-button>
-        }
+          @if (!isEdit) {
+            <ion-button expand="block" fill="outline" (click)="saveAndAddAnother()" [disabled]="saving()">
+              Save and add another
+            </ion-button>
+          }
+        </div>
       }
     </ion-content>
   `,
   styles: [
     `
-      .field-label {
-        display: block;
-        margin: 14px 4px 6px;
+      .amount-block {
+        background: var(--app-surface);
+        border-radius: var(--app-radius-lg);
+        box-shadow: var(--app-shadow);
+        padding: 18px;
+      }
+      .amount-field {
+        font-size: 2.4rem;
+        font-weight: 800;
+        --color: var(--app-primary);
+        --placeholder-color: var(--app-primary);
+        --placeholder-opacity: 0.45;
+        --padding-start: 0;
+      }
+      .currency-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border: 1px solid var(--app-border);
+        border-radius: var(--app-radius-pill);
+        font-size: 0.8rem;
         font-weight: 600;
+        color: var(--app-text-muted);
+      }
+      .field-label {
+        font-weight: 700;
+        font-size: 1rem;
+        margin: 18px 0 8px;
+      }
+      .cat-scroll {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        margin-bottom: 10px;
+      }
+      .cat-chip {
+        flex: 0 0 auto;
+        width: 84px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 12px 6px;
+        background: var(--app-surface);
+        border: 1px solid var(--app-border);
+        border-radius: var(--app-radius-md);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--app-text);
+      }
+      .cat-chip.selected {
+        border-color: var(--app-primary);
+        background: var(--app-primary-soft);
+      }
+      .create-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+      }
+      .create-row ion-input {
+        flex: 1;
+      }
+      .create-link {
+        margin-top: 10px;
       }
       .chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px;
+        gap: 6px;
+      }
+      .save-btn {
+        margin-top: 22px;
       }
     `,
   ],
@@ -191,23 +249,24 @@ const BOTH = 'both';
     IonButtons,
     IonButton,
     IonContent,
-    IonList,
-    IonItem,
     IonInput,
     IonSelect,
     IonSelectOption,
     IonChip,
     IonLabel,
+    IonIcon,
     IonSegment,
     IonSegmentButton,
     IonTextarea,
     IonSpinner,
     IonNote,
+    CategoryIconComponent,
   ],
 })
 export class AddExpenseModalComponent implements OnInit {
   @Input() roomId!: string;
   @Input() isAdmin = false;
+  @Input() currency = 'ARS';
   @Input() expense?: Expense;
 
   private readonly categoryService = inject(CategoryService);

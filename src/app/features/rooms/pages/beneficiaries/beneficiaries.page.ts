@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {
+  ActionSheetController,
   IonBackButton,
   IonBadge,
   IonButton,
@@ -11,7 +12,6 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -38,39 +38,37 @@ import { describeError } from '../../../../shared/utils';
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
-      } @else if (!isAdmin()) {
-        <ion-note color="danger" class="ion-padding">
-          Only admins can manage beneficiaries.
-        </ion-note>
-      } @else if (items().length === 0) {
-        <ion-note class="ion-padding">No beneficiaries yet. Add who expenses are for (e.g. Mom, Dad).</ion-note>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else {
-        <ion-list>
-          @for (item of items(); track item.id) {
-            <ion-item>
-              <ion-label [class.inactive]="!item.isActive">{{ item.name }}</ion-label>
-              @if (!item.isActive) {
-                <ion-badge slot="end" color="medium">inactive</ion-badge>
-              }
-              <ion-button fill="clear" slot="end" (click)="rename(item)">
-                <ion-icon slot="icon-only" name="create-outline"></ion-icon>
-              </ion-button>
-              <ion-button fill="clear" slot="end" (click)="toggle(item)">
-                {{ item.isActive ? 'Deactivate' : 'Activate' }}
-              </ion-button>
-              <ion-button fill="clear" color="danger" slot="end" (click)="remove(item)">
-                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-              </ion-button>
-            </ion-item>
+        <div class="page-pad">
+          @if (!isAdmin()) {
+            <div class="app-card text-muted">Only admins can manage beneficiaries.</div>
+          } @else if (items().length === 0) {
+            <div class="app-card text-muted">
+              No beneficiaries yet. Add who expenses are for (e.g. Mom, Dad).
+            </div>
+          } @else {
+            <div class="list-card">
+              <ion-list>
+                @for (item of items(); track item.id) {
+                  <ion-item button detail="false" (click)="openActions(item)">
+                    <span slot="start" class="lead-icon"><ion-icon name="person-outline"></ion-icon></span>
+                    <ion-label [class.inactive]="!item.isActive">{{ item.name }}</ion-label>
+                    @if (!item.isActive) {
+                      <ion-badge slot="end" color="medium">inactive</ion-badge>
+                    }
+                    <ion-icon slot="end" name="ellipsis-vertical" class="row-more"></ion-icon>
+                  </ion-item>
+                }
+              </ion-list>
+            </div>
           }
-        </ion-list>
+        </div>
       }
     </ion-content>
   `,
-  styles: [`.inactive { text-decoration: line-through; opacity: 0.6; }`],
   imports: [
     IonHeader,
     IonToolbar,
@@ -83,7 +81,6 @@ import { describeError } from '../../../../shared/utils';
     IonItem,
     IonLabel,
     IonBadge,
-    IonNote,
     IonIcon,
     IonSpinner,
   ],
@@ -93,6 +90,7 @@ export class BeneficiariesPage {
   private readonly service = inject(BeneficiaryService);
   private readonly roomService = inject(RoomService);
   private readonly feedback = inject(FeedbackService);
+  private readonly actionSheet = inject(ActionSheetController);
 
   readonly items = signal<Beneficiary[]>([]);
   readonly loading = signal(true);
@@ -124,6 +122,23 @@ export class BeneficiariesPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async openActions(item: Beneficiary): Promise<void> {
+    const sheet = await this.actionSheet.create({
+      header: item.name,
+      buttons: [
+        { text: 'Rename', icon: 'create-outline', handler: () => void this.rename(item) },
+        {
+          text: item.isActive ? 'Deactivate' : 'Activate',
+          icon: item.isActive ? 'close-outline' : 'checkmark-circle-outline',
+          handler: () => void this.toggle(item),
+        },
+        { text: 'Delete', role: 'destructive', icon: 'trash-outline', handler: () => void this.remove(item) },
+        { text: 'Cancel', role: 'cancel' },
+      ],
+    });
+    await sheet.present();
   }
 
   async create(): Promise<void> {

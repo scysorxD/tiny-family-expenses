@@ -12,13 +12,11 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
   IonSelect,
   IonSelectOption,
   IonSpinner,
-  IonText,
-  IonTitle,
   IonToggle,
+  IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
 import { FeedbackService } from '../../../../core/services/feedback.service';
@@ -36,20 +34,19 @@ import { describeError } from '../../../../shared/utils';
         <ion-title>Room settings</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else if (!isAdmin()) {
-        <ion-note color="danger" class="ion-padding">
-          Only admins can change room settings.
-        </ion-note>
+        <div class="page-pad">
+          <div class="app-card text-muted">Only admins can change room settings.</div>
+        </div>
       } @else {
-        <ion-list>
-          <ion-item>
-            <ion-input label="Room name" labelPlacement="stacked" [(ngModel)]="name"></ion-input>
-          </ion-item>
-          <ion-item>
-            <ion-select label="Currency" labelPlacement="stacked" [(ngModel)]="currency">
+        <div class="page-pad">
+          <h2 class="section-title">General</h2>
+          <div class="form-stack">
+            <ion-input fill="outline" label="Room name" labelPlacement="stacked" [(ngModel)]="name"></ion-input>
+            <ion-select fill="outline" label="Currency" labelPlacement="stacked" [(ngModel)]="currency">
               <ion-select-option value="ARS">ARS</ion-select-option>
               <ion-select-option value="USD">USD</ion-select-option>
               <ion-select-option value="EUR">EUR</ion-select-option>
@@ -57,50 +54,63 @@ import { describeError } from '../../../../shared/utils';
               <ion-select-option value="CLP">CLP</ion-select-option>
               <ion-select-option value="MXN">MXN</ion-select-option>
             </ion-select>
-          </ion-item>
-          <ion-item>
-            <ion-toggle [(ngModel)]="includeDetail">Include detail in collection message</ion-toggle>
-          </ion-item>
-        </ion-list>
-        <ion-button class="ion-margin-top" expand="block" (click)="save()" [disabled]="saving()">
-          @if (saving()) {
-            <ion-spinner name="dots"></ion-spinner>
-          } @else {
-            Save settings
-          }
-        </ion-button>
+            <div class="app-card toggle-card">
+              <ion-toggle [(ngModel)]="includeDetail">Include detail in collection message</ion-toggle>
+            </div>
+            <ion-button expand="block" (click)="save()" [disabled]="saving()">
+              @if (saving()) {
+                <ion-spinner name="dots"></ion-spinner>
+              } @else {
+                Save settings
+              }
+            </ion-button>
+          </div>
 
-        <ion-list class="ion-margin-top">
-          <ion-item button (click)="go('beneficiaries')">
-            <ion-icon slot="start" name="people-outline"></ion-icon>
-            <ion-label>Beneficiaries</ion-label>
-          </ion-item>
-          <ion-item button (click)="go('payers')">
-            <ion-icon slot="start" name="cash-outline"></ion-icon>
-            <ion-label>Payers</ion-label>
-          </ion-item>
-          <ion-item button (click)="go('members')">
-            <ion-icon slot="start" name="people-outline"></ion-icon>
-            <ion-label>Members &amp; invitations</ion-label>
-          </ion-item>
-        </ion-list>
+          <h2 class="section-title">People</h2>
+          <div class="list-card">
+            <ion-list>
+              <ion-item button detail="true" (click)="go('beneficiaries')">
+                <span slot="start" class="lead-icon"><ion-icon name="person-outline"></ion-icon></span>
+                <ion-label>Beneficiaries</ion-label>
+              </ion-item>
+              <ion-item button detail="true" (click)="go('payers')">
+                <span slot="start" class="lead-icon"><ion-icon name="wallet-outline"></ion-icon></span>
+                <ion-label>Payers</ion-label>
+              </ion-item>
+              <ion-item button detail="true" (click)="go('members')">
+                <span slot="start" class="lead-icon"><ion-icon name="people-outline"></ion-icon></span>
+                <ion-label>Members &amp; invitations</ion-label>
+              </ion-item>
+            </ion-list>
+          </div>
 
-        <ion-button
-          class="ion-margin-top"
-          expand="block"
-          color="danger"
-          fill="outline"
-          (click)="archive()"
-        >
-          Archive room
-        </ion-button>
-        <ion-text color="medium">
-          <p class="hint">Archiving hides the room and blocks new changes.</p>
-        </ion-text>
+          <div class="danger-zone">
+            <h2 class="section-title">Danger zone</h2>
+            <ion-button expand="block" color="danger" fill="outline" (click)="archive()">
+              Archive room
+            </ion-button>
+            <p class="label-muted hint">Archiving hides the room and blocks new changes.</p>
+          </div>
+        </div>
       }
     </ion-content>
   `,
-  styles: [`.hint { font-size: 0.85rem; }`],
+  styles: [
+    `
+      .form-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .toggle-card {
+        display: flex;
+      }
+      .hint {
+        margin: 10px 2px 0;
+        font-size: 0.85rem;
+      }
+    `,
+  ],
   imports: [
     FormsModule,
     IonHeader,
@@ -117,8 +127,6 @@ import { describeError } from '../../../../shared/utils';
     IonSelect,
     IonSelectOption,
     IonToggle,
-    IonNote,
-    IonText,
     IonIcon,
     IonSpinner,
   ],

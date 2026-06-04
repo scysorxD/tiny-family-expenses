@@ -32,6 +32,286 @@
  * https://ionicframework.com/docs/theming/dark-mode
  */
 
+/* Dark mode disabled — this app uses a single light theme. */
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+/* @import "@ionic/angular/css/palettes/dark.system.css"; */
+
+/* -------------------------------------------------------------------------- */
+/* Light theme base + reusable UI utilities                                   */
+/* These live globally so per-component styles stay within the 4 kB budget.   */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+}
+
+ion-content {
+  --background: var(--app-bg);
+}
+
+ion-toolbar {
+  --background: var(--app-surface);
+  --color: var(--app-text);
+  --border-width: 0;
+  --border-color: transparent;
+}
+
+ion-title {
+  font-weight: 700;
+}
+
+ion-button {
+  --border-radius: var(--app-radius-md);
+  --box-shadow: none;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Layout helpers */
+.page-pad {
+  padding: var(--app-space-4);
+}
+
+.fab-safe {
+  padding-bottom: 112px;
+}
+
+.center-pad {
+  padding: var(--app-space-6);
+  text-align: center;
+}
+
+.stack-gap > * + * {
+  margin-top: var(--app-space-3);
+}
+
+/* Typography helpers */
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--app-text);
+  margin: var(--app-space-5) 0 var(--app-space-3);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--app-space-5) 0 var(--app-space-3);
+}
+
+.section-head .section-title {
+  margin: 0;
+}
+
+.link-action {
+  color: var(--app-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.text-muted {
+  color: var(--app-text-muted);
+}
+
+.label-muted {
+  color: var(--app-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.amount-hero {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--app-primary);
+  margin: var(--app-space-1) 0;
+}
+
+.amount-xl {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--app-primary);
+  margin: var(--app-space-1) 0;
+}
+
+/* Cards */
+.app-card {
+  background: var(--app-surface);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow);
+  padding: var(--app-space-4);
+}
+
+.hero-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--app-surface);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow);
+  padding: var(--app-space-5);
+}
+
+.promo-card {
+  display: flex;
+  gap: var(--app-space-4);
+  align-items: center;
+  background: var(--app-promo-soft);
+  border-radius: var(--app-radius-lg);
+  padding: var(--app-space-5);
+}
+
+/* Lists rendered as a single rounded card */
+.list-card {
+  background: var(--app-surface);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow);
+  overflow: hidden;
+}
+
+.list-card ion-list {
+  padding: 0;
+  background: transparent;
+}
+
+.list-card ion-item {
+  --background: transparent;
+  --border-color: var(--app-border);
+  --padding-start: var(--app-space-4);
+  --inner-padding-end: var(--app-space-4);
+}
+
+/* Pills / badges */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: var(--app-radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.status-pill ion-icon {
+  font-size: 0.95rem;
+}
+
+.status-pill.is-open {
+  background: var(--app-success-soft);
+  color: var(--app-success-ink);
+}
+
+.status-pill.is-paid {
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+}
+
+.status-pill.is-warning {
+  background: var(--app-warning-soft);
+  color: var(--app-warning-ink);
+}
+
+.status-pill.is-danger {
+  background: var(--app-danger-soft);
+  color: var(--app-danger-ink);
+}
+
+.status-pill.is-muted {
+  background: #f1f5f9;
+  color: var(--app-text-muted);
+}
+
+/* Quick action grid (room main) */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--app-space-3);
+  margin: var(--app-space-4) 0;
+}
+
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 6px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-text);
+}
+
+.quick-action ion-icon {
+  font-size: 1.4rem;
+  color: var(--app-primary);
+}
+
+/* Circular category icon */
+.cat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cat-icon ion-icon {
+  font-size: 1.25rem;
+}
+
+/* Leading round icon for list rows */
+.lead-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lead-icon ion-icon {
+  font-size: 1.2rem;
+}
+
+/* Shared list-row helpers */
+.row-title {
+  font-weight: 700;
+  margin: 0;
+}
+
+.row-more {
+  color: var(--app-text-muted);
+  font-size: 1.2rem;
+}
+
+.row-amount {
+  font-weight: 700;
+}
+
+.inactive {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Danger zone grouping */
+.danger-zone {
+  margin-top: 26px;
+}
+
+.danger-zone .section-title {
+  color: var(--app-danger-ink);
+}

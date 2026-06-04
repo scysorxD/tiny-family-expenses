@@ -4,9 +4,8 @@ import {
   IonButton,
   IonContent,
   IonHeader,
-  IonNote,
+  IonIcon,
   IonSpinner,
-  IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -23,35 +22,73 @@ import { describeError } from '../../../../shared/utils';
         <ion-title>Join room</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
-      @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
-      } @else if (!preview()) {
-        <ion-note color="danger">This invitation link is invalid.</ion-note>
-        <ion-button expand="block" fill="clear" (click)="goRooms()">Go to my rooms</ion-button>
-      } @else {
-        <ion-text>
-          <h2>{{ preview()?.roomName }}</h2>
-          <p>{{ preview()?.inviter }} invited you as {{ preview()?.role }}.</p>
-        </ion-text>
-        @if (preview()?.expired) {
-          <ion-note color="danger">This invitation has expired.</ion-note>
-        } @else if (preview()?.accepted) {
-          <ion-note color="warning">This invitation was already used.</ion-note>
+    <ion-content>
+      <div class="page-pad">
+        @if (loading()) {
+          <div class="center-pad"><ion-spinner></ion-spinner></div>
+        } @else if (!preview()) {
+          <div class="app-card text-muted">This invitation link is invalid.</div>
+          <ion-button class="spaced" expand="block" fill="clear" (click)="goRooms()">Go to my rooms</ion-button>
         } @else {
-          <ion-button expand="block" (click)="accept()" [disabled]="accepting()">
-            @if (accepting()) {
-              <ion-spinner name="dots"></ion-spinner>
-            } @else {
-              Accept invitation
+          <div class="app-card invite-card">
+            <span class="invite-icon"><ion-icon name="home-outline"></ion-icon></span>
+            <h2 class="invite-title">{{ preview()?.roomName }}</h2>
+            <p class="label-muted">{{ preview()?.inviter }} invited you as {{ preview()?.role }}.</p>
+
+            @if (preview()?.expired) {
+              <span class="status-pill is-danger expiry">This invitation has expired</span>
+            } @else if (preview()?.accepted) {
+              <span class="status-pill is-warning expiry">This invitation was already used</span>
             }
-          </ion-button>
+          </div>
+
+          @if (!preview()?.expired && !preview()?.accepted) {
+            <ion-button class="spaced" expand="block" (click)="accept()" [disabled]="accepting()">
+              @if (accepting()) {
+                <ion-spinner name="dots"></ion-spinner>
+              } @else {
+                Accept invitation
+              }
+            </ion-button>
+          }
+          <ion-button expand="block" fill="clear" (click)="goRooms()">Maybe later</ion-button>
         }
-        <ion-button expand="block" fill="clear" (click)="goRooms()">Maybe later</ion-button>
-      }
+      </div>
     </ion-content>
   `,
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonText, IonNote, IonButton, IonSpinner],
+  styles: [
+    `
+      .invite-card {
+        text-align: center;
+      }
+      .invite-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        background: var(--app-primary-soft);
+        color: var(--app-primary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+      }
+      .invite-icon ion-icon {
+        font-size: 1.8rem;
+      }
+      .invite-title {
+        font-size: 1.3rem;
+        font-weight: 800;
+        margin: 0 0 4px;
+      }
+      .expiry {
+        margin-top: 12px;
+      }
+      .spaced {
+        margin-top: 18px;
+      }
+    `,
+  ],
+  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonIcon, IonSpinner],
 })
 export class AcceptInvitePage implements OnInit {
   private readonly route = inject(ActivatedRoute);
