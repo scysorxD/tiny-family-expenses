@@ -79,4 +79,11 @@ export class BeneficiaryService {
       throw error;
     }
   }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await this.client.from('beneficiaries').delete().eq('id', id);
+    if (error) {
+      throw error;
+    }
+  }
 }

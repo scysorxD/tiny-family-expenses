@@ -19,6 +19,7 @@ import {
 import { Payer } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PayerService } from '../../../../core/services/payer.service';
+import { RoomService } from '../../../../core/services/room.service';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
@@ -31,13 +32,19 @@ import { describeError } from '../../../../shared/utils';
         </ion-buttons>
         <ion-title>Payers</ion-title>
         <ion-buttons slot="end">
-          <ion-button (click)="create()"><ion-icon slot="icon-only" name="add"></ion-icon></ion-button>
+          <ion-button (click)="create()" [disabled]="!isAdmin()">
+            <ion-icon slot="icon-only" name="add"></ion-icon>
+          </ion-button>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
       @if (loading()) {
         <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+      } @else if (!isAdmin()) {
+        <ion-note color="danger" class="ion-padding">
+          Only admins can manage payers.
+        </ion-note>
       } @else if (items().length === 0) {
         <ion-note class="ion-padding">No payers yet. Add who splits the bill (e.g. Sibling 1).</ion-note>
       } @else {
@@ -53,6 +60,9 @@ import { describeError } from '../../../../shared/utils';
               </ion-button>
               <ion-button fill="clear" slot="end" (click)="toggle(item)">
                 {{ item.isActive ? 'Deactivate' : 'Activate' }}
+              </ion-button>
+              <ion-button fill="clear" color="danger" slot="end" (click)="remove(item)">
+                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
               </ion-button>
             </ion-item>
           }
@@ -81,10 +91,12 @@ import { describeError } from '../../../../shared/utils';
 export class PayersPage {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(PayerService);
+  private readonly roomService = inject(RoomService);
   private readonly feedback = inject(FeedbackService);
 
   readonly items = signal<Payer[]>([]);
   readonly loading = signal(true);
+  readonly isAdmin = signal(false);
 
   private get roomId(): string {
     return this.route.snapshot.paramMap.get('roomId') ?? '';
@@ -101,7 +113,12 @@ export class PayersPage {
   private async load(): Promise<void> {
     this.loading.set(true);
     try {
-      this.items.set(await this.service.list(this.roomId, true));
+      const [role, payers] = await Promise.all([
+        this.roomService.getMyRole(this.roomId),
+        this.service.list(this.roomId, true),
+      ]);
+      this.isAdmin.set(role === 'admin');
+      this.items.set(payers);
     } catch (error) {
       await this.feedback.error(describeError(error));
     } finally {
@@ -138,6 +155,25 @@ export class PayersPage {
   async toggle(item: Payer): Promise<void> {
     try {
       await this.service.setActive(item.id, !item.isActive);
+      await this.load();
+    } catch (error) {
+      await this.feedback.error(describeError(error));
+    }
+  }
+
+  async remove(item: Payer): Promise<void> {
+    const confirmed = await this.feedback.confirm(
+      'Delete payer',
+      `Delete "${item.name}"? Payers with closed-period payment history cannot be deleted.`,
+      'Delete',
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await this.service.delete(item.id);
+      await this.feedback.success('Payer deleted');
       await this.load();
     } catch (error) {
       await this.feedback.error(describeError(error));

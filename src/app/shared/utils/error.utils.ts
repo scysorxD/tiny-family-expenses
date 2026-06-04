@@ -12,6 +12,12 @@ export function describeError(error: unknown): string {
   if (message.includes('CATEGORY_IN_USE')) {
     return 'This category has expenses and cannot be deleted. You can deactivate it instead.';
   }
+  if (message.includes('BENEFICIARY_IN_USE')) {
+    return 'This beneficiary has expenses and cannot be deleted. You can deactivate it instead.';
+  }
+  if (message.includes('PAYER_IN_USE')) {
+    return 'This payer has closed-period payment history and cannot be deleted. You can deactivate it instead.';
+  }
   if (message.includes('NOT_AUTHENTICATED')) {
     return 'You need to sign in to do that.';
   }
@@ -29,6 +35,9 @@ export function describeError(error: unknown): string {
   }
   if (message.toLowerCase().includes('duplicate key') || message.includes('23505')) {
     return 'That name already exists.';
+  }
+  if (message.toLowerCase().includes('foreign key') || message.includes('23503')) {
+    return 'This item is already in use and cannot be deleted. You can deactivate it instead.';
   }
   if (message.includes('Invalid login credentials')) {
     return 'Invalid email or password.';

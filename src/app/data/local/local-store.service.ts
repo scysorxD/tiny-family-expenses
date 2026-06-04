@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import type { SQLiteDBConnection } from '@capacitor-community/sqlite';
-import { Beneficiary, Category, Expense, SyncQueueItem, SyncStatus } from '../../core/models';
+import { Beneficiary, Category, Expense, Payer, SyncQueueItem, SyncStatus } from '../../core/models';
 import { monthKeyFromDateString, nowIso } from '../../shared/utils';
 import { LocalDatabaseService } from './local-database.service';
 
@@ -339,6 +339,37 @@ export class LocalStore {
     const where = includeInactive ? '' : ' AND is_active = 1';
     const result = await db.query(
       `SELECT * FROM beneficiaries WHERE room_id = ?${where} ORDER BY name ASC;`,
+      [roomId],
+    );
+    return (result.values ?? []).map((row) => ({
+      id: str((row as Row)['id']),
+      roomId: str((row as Row)['room_id']),
+      name: str((row as Row)['name']),
+      isActive: bool((row as Row)['is_active']),
+    }));
+  }
+
+  async cachePayers(payers: Payer[]): Promise<void> {
+    const db = await this.connection();
+    const timestamp = nowIso();
+    for (const payer of payers) {
+      await db.run(
+        `INSERT INTO payers (id, room_id, name, is_active, cached_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           name = excluded.name,
+           is_active = excluded.is_active,
+           cached_at = excluded.cached_at;`,
+        [payer.id, payer.roomId, payer.name, payer.isActive ? 1 : 0, timestamp],
+      );
+    }
+  }
+
+  async listPayers(roomId: string, includeInactive: boolean): Promise<Payer[]> {
+    const db = await this.connection();
+    const where = includeInactive ? '' : ' AND is_active = 1';
+    const result = await db.query(
+      `SELECT * FROM payers WHERE room_id = ?${where} ORDER BY name ASC;`,
       [roomId],
     );
     return (result.values ?? []).map((row) => ({
