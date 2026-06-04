@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import {
   IonBackButton,
-  IonBadge,
   IonButton,
   IonButtons,
   IonContent,
@@ -13,11 +12,9 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
   IonSegment,
   IonSegmentButton,
   IonSpinner,
-  IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -39,79 +36,99 @@ import { describeError } from '../../../../shared/utils';
         <ion-title>Members</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else {
-        <div class="invite">
-          <ion-text><h3>Invite someone</h3></ion-text>
-          <ion-item>
+        <div class="page-pad">
+          <h2 class="section-title">Invite someone</h2>
+          <div class="form-stack">
             <ion-input
+              fill="outline"
               label="Email"
               labelPlacement="stacked"
               type="email"
               [(ngModel)]="inviteEmail"
             ></ion-input>
-          </ion-item>
-          <ion-segment [(ngModel)]="inviteRole">
-            <ion-segment-button value="guest"><ion-label>Guest</ion-label></ion-segment-button>
-            <ion-segment-button value="admin"><ion-label>Admin</ion-label></ion-segment-button>
-          </ion-segment>
-          <ion-button expand="block" class="ion-margin-top" (click)="generate()" [disabled]="generating()">
-            @if (generating()) {
-              <ion-spinner name="dots"></ion-spinner>
-            } @else {
-              Generate invite link
-            }
-          </ion-button>
+            <ion-segment [(ngModel)]="inviteRole">
+              <ion-segment-button value="guest"><ion-label>Guest</ion-label></ion-segment-button>
+              <ion-segment-button value="admin"><ion-label>Admin</ion-label></ion-segment-button>
+            </ion-segment>
+            <ion-button expand="block" (click)="generate()" [disabled]="generating()">
+              @if (generating()) {
+                <ion-spinner name="dots"></ion-spinner>
+              } @else {
+                Generate invite link
+              }
+            </ion-button>
+          </div>
 
           @if (link()) {
-            <ion-item>
-              <ion-label class="link">{{ link() }}</ion-label>
-            </ion-item>
-            <div class="link-actions">
-              <ion-button fill="outline" (click)="copy()">
-                <ion-icon slot="start" name="copy-outline"></ion-icon> Copy
-              </ion-button>
-              <ion-button fill="outline" (click)="shareLink()">
-                <ion-icon slot="start" name="share-social-outline"></ion-icon> Share
-              </ion-button>
+            <div class="app-card link-card">
+              <p class="link">{{ link() }}</p>
+              <div class="link-actions">
+                <ion-button fill="outline" size="small" (click)="copy()">
+                  <ion-icon slot="start" name="copy-outline"></ion-icon> Copy
+                </ion-button>
+                <ion-button fill="outline" size="small" (click)="shareLink()">
+                  <ion-icon slot="start" name="share-social-outline"></ion-icon> Share
+                </ion-button>
+              </div>
+              <p class="label-muted">Share this link; it expires in 7 days.</p>
             </div>
-            <ion-note>Share this link; it expires in 7 days.</ion-note>
           }
-        </div>
 
-        <ion-text><h3 class="ion-margin-top">Current members</h3></ion-text>
-        <ion-list>
-          @for (member of members(); track member.id) {
-            <ion-item>
-              <ion-label>
-                <h3>{{ member.displayName }}</h3>
-                <p>{{ member.email }}</p>
-              </ion-label>
-              <ion-badge slot="end" [color]="member.role === 'admin' ? 'primary' : 'medium'">
-                {{ member.role }}
-              </ion-badge>
-              <ion-button fill="clear" color="danger" slot="end" (click)="remove(member)">
-                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-              </ion-button>
-            </ion-item>
-          }
-        </ion-list>
+          <h2 class="section-title">Current members</h2>
+          <div class="list-card">
+            <ion-list>
+              @for (member of members(); track member.id) {
+                <ion-item>
+                  <span slot="start" class="lead-icon"><ion-icon name="person-outline"></ion-icon></span>
+                  <ion-label>
+                    <h3 class="row-title">{{ member.displayName }}</h3>
+                    <p class="label-muted">{{ member.email }}</p>
+                  </ion-label>
+                  <span
+                    slot="end"
+                    class="status-pill member-role"
+                    [class.is-paid]="member.role === 'admin'"
+                    [class.is-muted]="member.role !== 'admin'"
+                    >{{ member.role }}</span
+                  >
+                  <ion-button fill="clear" color="danger" slot="end" (click)="remove(member)">
+                    <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+                  </ion-button>
+                </ion-item>
+              }
+            </ion-list>
+          </div>
+        </div>
       }
     </ion-content>
   `,
   styles: [
     `
+      .form-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .link-card {
+        margin-top: 16px;
+      }
       .link {
         font-size: 0.8rem;
         word-break: break-all;
         white-space: normal;
+        margin: 0 0 10px;
       }
       .link-actions {
         display: flex;
         gap: 8px;
-        margin: 8px 0;
+        margin-bottom: 8px;
+      }
+      .member-role {
+        text-transform: capitalize;
       }
     `,
   ],
@@ -130,9 +147,6 @@ import { describeError } from '../../../../shared/utils';
     IonInput,
     IonSegment,
     IonSegmentButton,
-    IonBadge,
-    IonNote,
-    IonText,
     IonIcon,
     IonSpinner,
   ],

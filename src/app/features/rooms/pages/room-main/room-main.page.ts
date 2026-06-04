@@ -1,9 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ModalController } from '@ionic/angular/standalone';
+import {
+  ActionSheetButton,
+  ActionSheetController,
+  ModalController,
+} from '@ionic/angular/standalone';
 import {
   IonBackButton,
-  IonBadge,
   IonButton,
   IonButtons,
   IonContent,
@@ -14,9 +17,7 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
   IonSpinner,
-  IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -30,6 +31,7 @@ import { PreferencesService } from '../../../../core/services/preferences.servic
 import { RoomService } from '../../../../core/services/room.service';
 import { SyncQueueService } from '../../../../core/services/sync-queue.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
+import { AppTabBarComponent, CategoryIconComponent, StatusPillComponent, StatusTone } from '../../../../shared/ui';
 import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../../../shared/utils';
 
 @Component({
@@ -50,60 +52,102 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
               ></ion-icon>
             </ion-button>
           }
-          <ion-button (click)="go('settings')" [disabled]="role() !== 'admin'">
-            <ion-icon slot="icon-only" name="settings-outline"></ion-icon>
-          </ion-button>
+          @if (role() === 'admin') {
+            <ion-button (click)="go('settings')">
+              <ion-icon slot="icon-only" name="settings-outline"></ion-icon>
+            </ion-button>
+          }
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else {
-        <ion-text>
-          <h2 class="month">{{ label() }}</h2>
-        </ion-text>
-        <ion-text color="primary">
-          <h1 class="total">{{ format(total()) }}</h1>
-        </ion-text>
-        <ion-badge [color]="statusColor()">{{ statusLabel() }}</ion-badge>
-        @if (sync.pending() > 0) {
-          <ion-note class="sync-note">
-            <ion-icon name="cloud-offline-outline"></ion-icon> {{ sync.pending() }} waiting to sync
-          </ion-note>
-        }
-        @if (sync.conflicts() > 0) {
-          <ion-note class="sync-note" color="danger">
-            <ion-icon name="warning-outline"></ion-icon> {{ sync.conflicts() }} sync conflict(s)
-          </ion-note>
-        }
+        <div class="page-pad fab-safe">
+          <div class="month-row">
+            <span>{{ label() }}</span>
+            <ion-icon name="chevron-down-outline"></ion-icon>
+          </div>
 
-        <div class="shortcuts">
-          <ion-button size="small" fill="outline" (click)="go('summary')">Summary</ion-button>
-          <ion-button size="small" fill="outline" (click)="go('collections')">Collections</ion-button>
-          <ion-button size="small" fill="outline" (click)="go('categories')">Categories</ion-button>
-          <ion-button size="small" fill="outline" (click)="go('dashboard')">Dashboard</ion-button>
-        </div>
+          <div class="hero-card">
+            <p class="label-muted">Total paid</p>
+            <div class="amount-hero">{{ format(total()) }}</div>
+            <div class="hero-pills">
+              <app-status-pill
+                [label]="statusLabel()"
+                [tone]="statusTone()"
+                [icon]="statusIcon()"
+              ></app-status-pill>
+              @if (sync.pending() > 0) {
+                <app-status-pill
+                  [label]="sync.pending() + ' to sync'"
+                  tone="warning"
+                  icon="cloud-offline-outline"
+                ></app-status-pill>
+              }
+              @if (sync.conflicts() > 0) {
+                <app-status-pill
+                  [label]="sync.conflicts() + ' conflict'"
+                  tone="danger"
+                  icon="warning-outline"
+                ></app-status-pill>
+              }
+            </div>
+          </div>
 
-        <div class="latest">Latest expenses</div>
-        <ion-list>
-          @if (expenses().length === 0) {
-            <ion-note class="ion-padding">No expenses yet. Tap + to add the first one.</ion-note>
-          } @else {
-            @for (expense of expenses(); track expense.id) {
-              <ion-item button (click)="edit(expense)">
-                <ion-label>
-                  <h3>{{ categoryName(expense.categoryId) }}</h3>
-                  <p>{{ beneficiaryNames(expense) }} · {{ expense.expenseDate }}</p>
-                </ion-label>
-                @if (expenseBadge(expense); as badge) {
-                  <ion-badge slot="end" [color]="badge.color">{{ badge.label }}</ion-badge>
-                }
-                <ion-text slot="end">{{ format(expense.amount) }}</ion-text>
-              </ion-item>
+          <div class="quick-actions">
+            <button type="button" class="quick-action" (click)="go('summary')">
+              <ion-icon name="pie-chart-outline"></ion-icon>Summary
+            </button>
+            <button type="button" class="quick-action" (click)="go('collections')">
+              <ion-icon name="people-outline"></ion-icon>Collections
+            </button>
+            <button type="button" class="quick-action" (click)="go('categories')">
+              <ion-icon name="pricetag-outline"></ion-icon>Categories
+            </button>
+            <button type="button" class="quick-action" (click)="openMore()">
+              <ion-icon name="grid-outline"></ion-icon>More
+            </button>
+          </div>
+
+          <div class="section-head">
+            <span class="section-title">Latest expenses</span>
+            @if (expenses().length > 0) {
+              <span class="link-action" (click)="go('summary')">
+                View all <ion-icon name="chevron-forward"></ion-icon>
+              </span>
             }
+          </div>
+
+          @if (expenses().length === 0) {
+            <div class="app-card text-muted">No expenses yet. Tap + to add the first one.</div>
+          } @else {
+            <div class="list-card">
+              <ion-list>
+                @for (expense of expenses(); track expense.id) {
+                  <ion-item button detail="false" (click)="edit(expense)">
+                    <app-category-icon
+                      slot="start"
+                      [name]="categoryName(expense.categoryId)"
+                    ></app-category-icon>
+                    <ion-label>
+                      <h3 class="row-title">{{ categoryName(expense.categoryId) }}</h3>
+                      <p class="label-muted">{{ beneficiaryNames(expense) }} · {{ expense.expenseDate }}</p>
+                    </ion-label>
+                    <div slot="end" class="row-end">
+                      @if (expenseBadge(expense); as badge) {
+                        <app-status-pill [label]="badge.label" [tone]="badge.tone"></app-status-pill>
+                      }
+                      <span class="row-amount">{{ format(expense.amount) }}</span>
+                      <ion-icon name="chevron-forward" class="chev"></ion-icon>
+                    </div>
+                  </ion-item>
+                }
+              </ion-list>
+            </div>
           }
-        </ion-list>
+        </div>
       }
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button (click)="addExpense()" [disabled]="loading()">
@@ -111,34 +155,42 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
         </ion-fab-button>
       </ion-fab>
     </ion-content>
+    <app-tab-bar [roomId]="roomId" active="home" (addExpense)="addExpense()"></app-tab-bar>
   `,
   styles: [
     `
-      .month {
-        margin: 0;
-        color: var(--ion-color-medium);
-        font-size: 1rem;
-      }
-      .total {
-        margin: 2px 0 6px;
-        font-size: 2.2rem;
+      .month-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 4px 0 14px;
         font-weight: 700;
+        font-size: 1.05rem;
       }
-      .shortcuts {
+      .month-row ion-icon {
+        color: var(--app-text-muted);
+      }
+      .hero-pills {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin: 14px 0;
+        gap: 8px;
+        margin-top: 10px;
       }
-      .latest {
-        display: block;
-        font-weight: 600;
-        padding: 8px 0;
+      .row-title {
+        font-weight: 700;
+        margin: 0;
       }
-      .sync-note {
-        display: block;
-        margin-top: 6px;
-        font-size: 0.8rem;
+      .row-end {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .row-amount {
+        font-weight: 700;
+      }
+      .row-end .chev {
+        color: var(--app-text-muted);
+        font-size: 1.1rem;
       }
     `,
   ],
@@ -153,13 +205,13 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     IonList,
     IonItem,
     IonLabel,
-    IonNote,
-    IonBadge,
-    IonText,
     IonIcon,
     IonFab,
     IonFabButton,
     IonSpinner,
+    AppTabBarComponent,
+    CategoryIconComponent,
+    StatusPillComponent,
   ],
 })
 export class RoomMainPage {
@@ -173,6 +225,7 @@ export class RoomMainPage {
   private readonly preferences = inject(PreferencesService);
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
+  private readonly actionSheet = inject(ActionSheetController);
   readonly sync = inject(SyncQueueService);
 
   private readonly categoryMap = signal<Map<string, string>>(new Map());
@@ -190,7 +243,7 @@ export class RoomMainPage {
     this.expenses().reduce((sum, expense) => sum + expense.amount, 0),
   );
 
-  private get roomId(): string {
+  get roomId(): string {
     return this.route.snapshot.paramMap.get('roomId') ?? '';
   }
 
@@ -243,23 +296,31 @@ export class RoomMainPage {
     return this.status().replace('_', ' ');
   }
 
-  statusColor(): string {
+  statusTone(): StatusTone {
     switch (this.status()) {
       case 'open':
-        return 'success';
+        return 'open';
       case 'paid':
-        return 'primary';
+        return 'paid';
       case 'partially_paid':
         return 'warning';
       default:
-        return 'medium';
+        return 'muted';
     }
+  }
+
+  statusIcon(): string | null {
+    return this.status() === 'paid' ? 'checkmark-circle' : null;
   }
 
   async addExpense(): Promise<void> {
     const modal = await this.modalController.create({
       component: AddExpenseModalComponent,
-      componentProps: { roomId: this.roomId, isAdmin: this.role() === 'admin' },
+      componentProps: {
+        roomId: this.roomId,
+        isAdmin: this.role() === 'admin',
+        currency: this.room()?.currency ?? 'ARS',
+      },
     });
     await modal.present();
     const { role } = await modal.onDidDismiss();
@@ -276,7 +337,12 @@ export class RoomMainPage {
 
     const modal = await this.modalController.create({
       component: AddExpenseModalComponent,
-      componentProps: { roomId: this.roomId, isAdmin: this.role() === 'admin', expense },
+      componentProps: {
+        roomId: this.roomId,
+        isAdmin: this.role() === 'admin',
+        currency: this.room()?.currency ?? 'ARS',
+        expense,
+      },
     });
     await modal.present();
     const { role } = await modal.onDidDismiss();
@@ -285,18 +351,33 @@ export class RoomMainPage {
     }
   }
 
-  expenseBadge(expense: Expense): { label: string; color: string } | null {
+  expenseBadge(expense: Expense): { label: string; tone: StatusTone } | null {
     switch (expense.syncStatus) {
       case 'pending_sync':
       case 'syncing':
-        return { label: 'pending', color: 'medium' };
+        return { label: 'pending', tone: 'muted' };
       case 'sync_failed':
-        return { label: 'retry', color: 'warning' };
+        return { label: 'retry', tone: 'warning' };
       case 'conflict':
-        return { label: 'conflict', color: 'danger' };
+        return { label: 'conflict', tone: 'danger' };
       default:
         return null;
     }
+  }
+
+  async openMore(): Promise<void> {
+    const buttons: ActionSheetButton[] = [
+      { text: 'Dashboard', icon: 'stats-chart-outline', handler: () => this.go('dashboard') },
+      { text: 'Members', icon: 'people-outline', handler: () => this.go('members') },
+      { text: 'Beneficiaries', icon: 'person-outline', handler: () => this.go('beneficiaries') },
+      { text: 'Payers', icon: 'wallet-outline', handler: () => this.go('payers') },
+    ];
+    if (this.role() === 'admin') {
+      buttons.push({ text: 'Room settings', icon: 'settings-outline', handler: () => this.go('settings') });
+    }
+    buttons.push({ text: 'Cancel', role: 'cancel' });
+    const sheet = await this.actionSheet.create({ header: 'More', buttons });
+    await sheet.present();
   }
 
   async syncNow(): Promise<void> {

@@ -1,17 +1,16 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { ModalController } from '@ionic/angular/standalone';
 import {
   IonBackButton,
-  IonBadge,
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
   IonSpinner,
-  IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -19,6 +18,8 @@ import { Period, Room, RoomRole } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PayerStatusView, PeriodService } from '../../../../core/services/period.service';
 import { RoomService } from '../../../../core/services/room.service';
+import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
+import { AppTabBarComponent, StatusPillComponent } from '../../../../shared/ui';
 import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../../../shared/utils';
 
 @Component({
@@ -32,35 +33,88 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
         <ion-title>Collections</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else if (!period() || period()?.status === 'open') {
-        <ion-note color="warning">Close the month to track who has paid.</ion-note>
+        <div class="page-pad fab-safe">
+          <div class="app-card empty-card">
+            <ion-icon name="lock-closed-outline"></ion-icon>
+            <span>Close the month to track who has paid.</span>
+          </div>
+        </div>
       } @else {
-        <ion-text><strong>{{ label }}</strong></ion-text>
-        <ion-text color="primary"><h2>{{ format(period()?.systemTotal ?? 0) }}</h2></ion-text>
-        <ion-note>{{ format(period()?.systemAmountPerPayer ?? 0) }} each</ion-note>
+        <div class="page-pad fab-safe">
+          <div class="hero-card">
+            <p class="label-muted">{{ label }}</p>
+            <div class="amount-hero">{{ format(period()?.systemTotal ?? 0) }}</div>
+            <p class="label-muted">
+              {{ format(period()?.systemAmountPerPayer ?? 0) }} each · {{ period()?.payerCount }} payers
+            </p>
+          </div>
 
-        <ion-list class="ion-margin-top">
-          @for (payer of payers(); track payer.id) {
-            <ion-item [button]="isAdmin()" (click)="toggle(payer)">
-              <ion-label>
-                <h3>{{ payer.payerName }}</h3>
-                <p>{{ format(payer.amountDue) }}</p>
-              </ion-label>
-              <ion-badge slot="end" [color]="payer.status === 'paid' ? 'success' : 'medium'">
-                {{ payer.status }}
-              </ion-badge>
-            </ion-item>
+          <h2 class="section-title">Payers</h2>
+          <div class="list-card">
+            <ion-list>
+              @for (payer of payers(); track payer.id) {
+                <ion-item [button]="isAdmin()" detail="false" (click)="toggle(payer)">
+                  <span slot="start" class="payer-icon"><ion-icon name="person-outline"></ion-icon></span>
+                  <ion-label>
+                    <h3 class="row-title">{{ payer.payerName }}</h3>
+                    <p class="label-muted">{{ format(payer.amountDue) }}</p>
+                  </ion-label>
+                  <app-status-pill
+                    slot="end"
+                    [label]="payer.status"
+                    [tone]="payer.status === 'paid' ? 'open' : 'muted'"
+                    [icon]="payer.status === 'paid' ? 'checkmark-circle' : null"
+                  ></app-status-pill>
+                </ion-item>
+              }
+            </ion-list>
+          </div>
+          @if (!isAdmin()) {
+            <p class="label-muted ion-margin-top">Only admins can mark payments.</p>
           }
-        </ion-list>
-        @if (!isAdmin()) {
-          <ion-note>Only admins can mark payments.</ion-note>
-        }
+        </div>
       }
     </ion-content>
+    <app-tab-bar [roomId]="roomId" active="collections" (addExpense)="addExpense()"></app-tab-bar>
   `,
+  styles: [
+    `
+      .empty-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .empty-card ion-icon {
+        font-size: 1.4rem;
+        color: var(--app-warning);
+      }
+      .payer-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--app-primary-soft);
+        color: var(--app-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .payer-icon ion-icon {
+        font-size: 1.2rem;
+      }
+      .row-title {
+        font-weight: 700;
+        margin: 0;
+      }
+      .app-status-pill,
+      app-status-pill .status-pill {
+        text-transform: capitalize;
+      }
+    `,
+  ],
   imports: [
     IonHeader,
     IonToolbar,
@@ -71,10 +125,10 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     IonList,
     IonItem,
     IonLabel,
-    IonBadge,
-    IonNote,
-    IonText,
+    IonIcon,
     IonSpinner,
+    AppTabBarComponent,
+    StatusPillComponent,
   ],
 })
 export class PayerStatusPage {
@@ -82,6 +136,7 @@ export class PayerStatusPage {
   private readonly roomService = inject(RoomService);
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
+  private readonly modalController = inject(ModalController);
 
   readonly room = signal<Room | null>(null);
   readonly role = signal<RoomRole | null>(null);
@@ -97,7 +152,7 @@ export class PayerStatusPage {
     return monthLabel(this.monthKey);
   }
 
-  private get roomId(): string {
+  get roomId(): string {
     return this.route.snapshot.paramMap.get('roomId') ?? '';
   }
 
@@ -135,6 +190,19 @@ export class PayerStatusPage {
 
   format(amount: number): string {
     return formatRoomAmount(amount, this.room()?.currency ?? 'ARS');
+  }
+
+  async addExpense(): Promise<void> {
+    const modal = await this.modalController.create({
+      component: AddExpenseModalComponent,
+      componentProps: {
+        roomId: this.roomId,
+        isAdmin: this.isAdmin(),
+        currency: this.room()?.currency ?? 'ARS',
+      },
+    });
+    await modal.present();
+    await modal.onDidDismiss();
   }
 
   async toggle(payer: PayerStatusView): Promise<void> {

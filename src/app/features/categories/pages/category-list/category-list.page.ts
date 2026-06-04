@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {
+  ActionSheetController,
   IonBackButton,
   IonBadge,
   IonButton,
@@ -11,7 +12,6 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
   IonSpinner,
   IonTitle,
   IonToolbar,
@@ -19,6 +19,7 @@ import {
 import { Category } from '../../../../core/models';
 import { CategoryService } from '../../../../core/services/category.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
+import { CategoryIconComponent } from '../../../../shared/ui';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
@@ -37,42 +38,33 @@ import { describeError } from '../../../../shared/utils';
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
-      } @else if (categories().length === 0) {
-        <ion-note class="ion-padding">No categories yet. Tap + to add one.</ion-note>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else {
-        <ion-list>
-          @for (category of categories(); track category.id) {
-            <ion-item>
-              <ion-label [class.inactive]="!category.isActive">{{ category.name }}</ion-label>
-              @if (!category.isActive) {
-                <ion-badge slot="end" color="medium">inactive</ion-badge>
-              }
-              <ion-button fill="clear" slot="end" (click)="rename(category)">
-                <ion-icon slot="icon-only" name="create-outline"></ion-icon>
-              </ion-button>
-              <ion-button fill="clear" slot="end" (click)="toggleActive(category)">
-                {{ category.isActive ? 'Deactivate' : 'Activate' }}
-              </ion-button>
-              <ion-button fill="clear" color="danger" slot="end" (click)="remove(category)">
-                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-              </ion-button>
-            </ion-item>
+        <div class="page-pad">
+          @if (categories().length === 0) {
+            <div class="app-card text-muted">No categories yet. Tap + to add one.</div>
+          } @else {
+            <div class="list-card">
+              <ion-list>
+                @for (category of categories(); track category.id) {
+                  <ion-item button detail="false" (click)="openActions(category)">
+                    <app-category-icon slot="start" [name]="category.name"></app-category-icon>
+                    <ion-label [class.inactive]="!category.isActive">{{ category.name }}</ion-label>
+                    @if (!category.isActive) {
+                      <ion-badge slot="end" color="medium">inactive</ion-badge>
+                    }
+                    <ion-icon slot="end" name="ellipsis-vertical" class="row-more"></ion-icon>
+                  </ion-item>
+                }
+              </ion-list>
+            </div>
           }
-        </ion-list>
+        </div>
       }
     </ion-content>
   `,
-  styles: [
-    `
-      .inactive {
-        text-decoration: line-through;
-        opacity: 0.6;
-      }
-    `,
-  ],
   imports: [
     IonHeader,
     IonToolbar,
@@ -85,15 +77,16 @@ import { describeError } from '../../../../shared/utils';
     IonItem,
     IonLabel,
     IonBadge,
-    IonNote,
     IonIcon,
     IonSpinner,
+    CategoryIconComponent,
   ],
 })
 export class CategoryListPage {
   private readonly route = inject(ActivatedRoute);
   private readonly categoryService = inject(CategoryService);
   private readonly feedback = inject(FeedbackService);
+  private readonly actionSheet = inject(ActionSheetController);
 
   readonly categories = signal<Category[]>([]);
   readonly loading = signal(true);
@@ -119,6 +112,23 @@ export class CategoryListPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async openActions(category: Category): Promise<void> {
+    const sheet = await this.actionSheet.create({
+      header: category.name,
+      buttons: [
+        { text: 'Rename', icon: 'create-outline', handler: () => void this.rename(category) },
+        {
+          text: category.isActive ? 'Deactivate' : 'Activate',
+          icon: category.isActive ? 'close-outline' : 'checkmark-circle-outline',
+          handler: () => void this.toggleActive(category),
+        },
+        { text: 'Delete', role: 'destructive', icon: 'trash-outline', handler: () => void this.remove(category) },
+        { text: 'Cancel', role: 'cancel' },
+      ],
+    });
+    await sheet.present();
   }
 
   async create(): Promise<void> {

@@ -8,10 +8,7 @@ import {
   IonContent,
   IonHeader,
   IonIcon,
-  IonItem,
-  IonNote,
   IonSpinner,
-  IonText,
   IonTextarea,
   IonTitle,
   IonToggle,
@@ -44,48 +41,52 @@ import {
         <ion-title>Collection message</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else if (!period() || period()?.status === 'open') {
-        <ion-note color="warning">Close the month first to generate the collection message.</ion-note>
+        <div class="page-pad">
+          <div class="app-card text-muted">
+            Close the month first to generate the collection message.
+          </div>
+        </div>
       } @else {
-        <ion-text color="medium">
-          <p class="system">
-            System total: {{ format(period()?.systemTotal ?? 0) }} ·
-            {{ period()?.payerCount }} payers ·
-            {{ format(period()?.systemAmountPerPayer ?? 0) }} each
-          </p>
-        </ion-text>
+        <div class="page-pad">
+          <div class="app-card">
+            <p class="label-muted system">
+              System total: {{ format(period()?.systemTotal ?? 0) }} ·
+              {{ period()?.payerCount }} payers ·
+              {{ format(period()?.systemAmountPerPayer ?? 0) }} each
+            </p>
+          </div>
 
-        <ion-item>
-          <ion-toggle [(ngModel)]="includeDetail" (ionChange)="regenerate()">Include detail</ion-toggle>
-        </ion-item>
+          <div class="app-card toggle-card">
+            <ion-toggle [(ngModel)]="includeDetail" (ionChange)="regenerate()">Include detail</ion-toggle>
+          </div>
 
-        <ion-item>
+          <h2 class="field-label">Message</h2>
           <ion-textarea
-            label="Message"
-            labelPlacement="stacked"
+            fill="outline"
             [(ngModel)]="message"
             [autoGrow]="true"
             rows="10"
           ></ion-textarea>
-        </ion-item>
 
-        <ion-button fill="clear" size="small" (click)="regenerate()">
-          <ion-icon slot="start" name="refresh"></ion-icon> Regenerate from system
-        </ion-button>
+          <span class="link-action regen" (click)="regenerate()">
+            <ion-icon name="refresh"></ion-icon> Regenerate from system
+          </span>
 
-        <div class="actions">
-          <ion-button (click)="copy()">
-            <ion-icon slot="start" name="copy-outline"></ion-icon> Copy
-          </ion-button>
-          <ion-button (click)="share()">
-            <ion-icon slot="start" name="share-social-outline"></ion-icon> Share
-          </ion-button>
-          <ion-button fill="outline" (click)="saveDraft()">
-            <ion-icon slot="start" name="save-outline"></ion-icon> Save
-          </ion-button>
+          <div class="actions">
+            <ion-button (click)="copy()">
+              <ion-icon slot="start" name="copy-outline"></ion-icon> Copy
+            </ion-button>
+            <ion-button (click)="share()">
+              <ion-icon slot="start" name="share-social-outline"></ion-icon> Share
+            </ion-button>
+            <ion-button fill="outline" (click)="saveDraft()">
+              <ion-icon slot="start" name="save-outline"></ion-icon> Save
+            </ion-button>
+          </div>
         </div>
       }
     </ion-content>
@@ -94,12 +95,30 @@ import {
     `
       .system {
         font-size: 0.85rem;
+        margin: 0;
+      }
+      .toggle-card {
+        display: flex;
+      }
+      .field-label {
+        font-weight: 700;
+        font-size: 1rem;
+        margin: 18px 0 8px;
+      }
+      .regen {
+        display: inline-flex;
+        margin-top: 10px;
       }
       .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 12px;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .actions ion-button {
+        flex: 1;
+        min-width: 120px;
+        margin: 0;
       }
     `,
   ],
@@ -112,11 +131,8 @@ import {
     IonButton,
     IonBackButton,
     IonContent,
-    IonItem,
     IonTextarea,
     IonToggle,
-    IonNote,
-    IonText,
     IonIcon,
     IonSpinner,
   ],

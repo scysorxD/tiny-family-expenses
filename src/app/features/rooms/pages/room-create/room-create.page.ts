@@ -8,8 +8,6 @@ import {
   IonContent,
   IonHeader,
   IonInput,
-  IonItem,
-  IonList,
   IonSelect,
   IonSelectOption,
   IonSpinner,
@@ -32,43 +30,51 @@ import { describeError } from '../../../../shared/utils';
         <ion-title>New room</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <ion-list>
-          <ion-item>
-            <ion-input
-              label="Room name"
-              labelPlacement="stacked"
-              placeholder="Parents expenses"
-              formControlName="name"
-            ></ion-input>
-          </ion-item>
-          <ion-item>
-            <ion-select label="Currency" labelPlacement="stacked" formControlName="currency">
-              <ion-select-option value="ARS">ARS</ion-select-option>
-              <ion-select-option value="USD">USD</ion-select-option>
-              <ion-select-option value="EUR">EUR</ion-select-option>
-              <ion-select-option value="BRL">BRL</ion-select-option>
-              <ion-select-option value="CLP">CLP</ion-select-option>
-              <ion-select-option value="MXN">MXN</ion-select-option>
-            </ion-select>
-          </ion-item>
-        </ion-list>
-        <ion-button
-          class="ion-margin-top"
-          expand="block"
-          type="submit"
-          [disabled]="loading() || form.invalid"
-        >
-          @if (loading()) {
-            <ion-spinner name="dots"></ion-spinner>
-          } @else {
-            Create room
-          }
-        </ion-button>
-      </form>
+    <ion-content>
+      <div class="page-pad">
+        <p class="label-muted intro">Create a room to track shared expenses with others.</p>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="form-stack">
+          <ion-input
+            fill="outline"
+            label="Room name"
+            labelPlacement="stacked"
+            placeholder="Parents expenses"
+            formControlName="name"
+          ></ion-input>
+          <ion-select fill="outline" label="Currency" labelPlacement="stacked" formControlName="currency">
+            <ion-select-option value="ARS">ARS</ion-select-option>
+            <ion-select-option value="USD">USD</ion-select-option>
+            <ion-select-option value="EUR">EUR</ion-select-option>
+            <ion-select-option value="BRL">BRL</ion-select-option>
+            <ion-select-option value="CLP">CLP</ion-select-option>
+            <ion-select-option value="MXN">MXN</ion-select-option>
+          </ion-select>
+          <ion-button expand="block" type="submit" [disabled]="loading() || form.invalid">
+            @if (loading()) {
+              <ion-spinner name="dots"></ion-spinner>
+            } @else {
+              Create room
+            }
+          </ion-button>
+        </form>
+      </div>
     </ion-content>
   `,
+  styles: [
+    `
+      .intro {
+        margin: 0 0 16px;
+      }
+      .form-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .form-stack ion-button {
+        margin-top: 6px;
+      }
+    `,
+  ],
   imports: [
     ReactiveFormsModule,
     IonHeader,
@@ -77,8 +83,6 @@ import { describeError } from '../../../../shared/utils';
     IonButtons,
     IonBackButton,
     IonContent,
-    IonList,
-    IonItem,
     IonInput,
     IonSelect,
     IonSelectOption,

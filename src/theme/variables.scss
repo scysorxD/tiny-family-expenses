@@ -1,2 +1,108 @@
 // For information on how to create your own theme, please refer to:
 // https://ionicframework.com/docs/theming/
+
+/* -------------------------------------------------------------------------- */
+/* tiny-family-expenses — light fintech theme                                 */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  /* App design tokens */
+  --app-bg: #f7f8fb;
+  --app-surface: #ffffff;
+  --app-primary: #2563eb;
+  --app-primary-soft: #dbeafe;
+  --app-promo-soft: #eff3fb;
+  --app-text: #111827;
+  --app-text-muted: #6b7280;
+  --app-border: #e5e7eb;
+
+  --app-success: #22c55e;
+  --app-success-soft: #dcfce7;
+  --app-success-ink: #15803d;
+  --app-warning: #f59e0b;
+  --app-warning-soft: #fef3c7;
+  --app-warning-ink: #b45309;
+  --app-danger: #ef4444;
+  --app-danger-soft: #fee2e2;
+  --app-danger-ink: #b91c1c;
+
+  /* Category accent palette */
+  --cat-amber: #f59e0b;
+  --cat-amber-soft: #fef3c7;
+  --cat-green: #22c55e;
+  --cat-green-soft: #dcfce7;
+  --cat-orange: #fb923c;
+  --cat-orange-soft: #ffedd5;
+  --cat-blue: #2563eb;
+  --cat-blue-soft: #dbeafe;
+  --cat-violet: #8b5cf6;
+  --cat-violet-soft: #ede9fe;
+  --cat-pink: #ec4899;
+  --cat-pink-soft: #fce7f3;
+
+  --app-radius-lg: 16px;
+  --app-radius-md: 12px;
+  --app-radius-pill: 999px;
+  --app-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px rgba(16, 24, 40, 0.06);
+  --app-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+
+  --app-space-1: 4px;
+  --app-space-2: 8px;
+  --app-space-3: 12px;
+  --app-space-4: 16px;
+  --app-space-5: 20px;
+  --app-space-6: 24px;
+
+  /* Ionic palette mapped to the light theme */
+  --ion-background-color: var(--app-bg);
+  --ion-background-color-rgb: 247, 248, 251;
+  --ion-text-color: var(--app-text);
+  --ion-text-color-rgb: 17, 24, 39;
+
+  --ion-toolbar-background: var(--app-surface);
+  --ion-toolbar-color: var(--app-text);
+  --ion-item-background: var(--app-surface);
+  --ion-card-background: var(--app-surface);
+
+  --ion-color-primary: #2563eb;
+  --ion-color-primary-rgb: 37, 99, 235;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #2157cf;
+  --ion-color-primary-tint: #3b73ed;
+
+  --ion-color-success: #22c55e;
+  --ion-color-success-rgb: 34, 197, 94;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #1ead53;
+  --ion-color-success-tint: #38cb6e;
+
+  --ion-color-warning: #f59e0b;
+  --ion-color-warning-rgb: 245, 158, 11;
+  --ion-color-warning-contrast: #ffffff;
+  --ion-color-warning-contrast-rgb: 255, 255, 255;
+  --ion-color-warning-shade: #d88b0a;
+  --ion-color-warning-tint: #f6a823;
+
+  --ion-color-danger: #ef4444;
+  --ion-color-danger-rgb: 239, 68, 68;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #d23c3c;
+  --ion-color-danger-tint: #f15757;
+
+  --ion-color-medium: #6b7280;
+  --ion-color-medium-rgb: 107, 114, 128;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #5e6471;
+  --ion-color-medium-tint: #7a808d;
+
+  --ion-color-light: #f2f4f7;
+  --ion-color-light-rgb: 242, 244, 247;
+  --ion-color-light-contrast: #111827;
+  --ion-color-light-contrast-rgb: 17, 24, 39;
+  --ion-color-light-shade: #d5d7da;
+  --ion-color-light-tint: #f3f5f8;
+}

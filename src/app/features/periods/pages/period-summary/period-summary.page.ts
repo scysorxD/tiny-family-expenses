@@ -3,7 +3,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ModalController } from '@ionic/angular/standalone';
 import {
   IonBackButton,
-  IonBadge,
   IonButton,
   IonButtons,
   IonContent,
@@ -12,9 +11,9 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonNote,
+  IonSegment,
+  IonSegmentButton,
   IonSpinner,
-  IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -26,6 +25,7 @@ import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
+import { AppTabBarComponent, CategoryIconComponent, StatusPillComponent, StatusTone } from '../../../../shared/ui';
 import {
   describeError,
   formatRoomAmount,
@@ -50,98 +50,229 @@ interface Group {
         <ion-title>Summary</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
-      <div class="nav">
-        <ion-button fill="clear" (click)="shift(-1)">
-          <ion-icon slot="icon-only" name="chevron-back"></ion-icon>
-        </ion-button>
-        <ion-text><strong>{{ label() }}</strong></ion-text>
-        <ion-button fill="clear" (click)="shift(1)">
-          <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
-        </ion-button>
-      </div>
-
+    <ion-content>
       @if (loading()) {
-        <div class="ion-text-center ion-padding"><ion-spinner></ion-spinner></div>
+        <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else {
-        <ion-text color="primary"><h1 class="total">{{ format(total()) }}</h1></ion-text>
-        <ion-badge [color]="statusColor()">{{ statusLabel() }}</ion-badge>
+        <div class="page-pad fab-safe">
+          <div class="month-nav">
+            <ion-button fill="clear" class="nav-btn" (click)="shift(-1)">
+              <ion-icon slot="icon-only" name="chevron-back"></ion-icon>
+            </ion-button>
+            <span class="month-label">{{ label() }}</span>
+            <ion-button fill="clear" class="nav-btn" (click)="shift(1)">
+              <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
+            </ion-button>
+          </div>
 
-        <div class="actions">
-          @if (isAdmin()) {
-            @if (status() === 'open') {
-              <ion-button size="small" (click)="closeMonth()">Close month</ion-button>
-            } @else {
-              <ion-button size="small" fill="outline" (click)="reopenMonth()">Reopen month</ion-button>
-            }
-          }
-          @if (status() !== 'open') {
-            <ion-button size="small" fill="outline" (click)="go('message')">Message</ion-button>
-            <ion-button size="small" fill="outline" (click)="go('collections')">Collections</ion-button>
-          }
-        </div>
-
-        <ion-text><h3>By category</h3></ion-text>
-        @if (byCategory().length === 0) {
-          <ion-note>No expenses this month.</ion-note>
-        } @else {
-          <ion-list>
-            @for (group of byCategory(); track group.label) {
-              <ion-item>
-                <ion-label>{{ group.label }}</ion-label>
-                <ion-text slot="end">{{ format(group.total) }}</ion-text>
-              </ion-item>
-            }
-          </ion-list>
-        }
-
-        <ion-text><h3>By beneficiary</h3></ion-text>
-        <ion-list>
-          @for (group of byBeneficiary(); track group.label) {
-            <ion-item>
-              <ion-label>{{ group.label }}</ion-label>
-              <ion-text slot="end">{{ format(group.total) }}</ion-text>
-            </ion-item>
-          }
-        </ion-list>
-
-        <ion-text><h3>Expenses</h3></ion-text>
-        <ion-list>
-          @for (expense of expenses(); track expense.id) {
-            <ion-item button (click)="edit(expense)">
-              <ion-label>
-                <h3>{{ categoryName(expense.categoryId) }}</h3>
-                <p>{{ expense.expenseDate }}{{ expense.description ? ' · ' + expense.description : '' }}</p>
-              </ion-label>
-              <ion-text slot="end">{{ format(expense.amount) }}</ion-text>
-              @if (status() === 'open') {
-                <ion-button fill="clear" color="danger" slot="end" (click)="remove(expense, $event)">
-                  <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+          <div class="hero-card">
+            <p class="label-muted">Total expenses</p>
+            <div class="amount-hero">{{ format(total()) }}</div>
+            <div class="hero-pills">
+              <app-status-pill
+                [label]="statusLabel()"
+                [tone]="statusTone()"
+                [icon]="statusIcon()"
+              ></app-status-pill>
+            </div>
+            <div class="hero-actions">
+              @if (isAdmin()) {
+                @if (status() === 'open') {
+                  <ion-button (click)="closeMonth()">Close month</ion-button>
+                } @else {
+                  <ion-button fill="outline" (click)="reopenMonth()">Reopen month</ion-button>
+                }
+              }
+              <ion-button fill="outline" (click)="go('collections')">
+                <ion-icon slot="start" name="people-outline"></ion-icon>Collections
+              </ion-button>
+              @if (status() !== 'open') {
+                <ion-button fill="outline" (click)="go('message')">
+                  <ion-icon slot="start" name="share-social-outline"></ion-icon>Message
                 </ion-button>
               }
-            </ion-item>
+            </div>
+          </div>
+
+          <ion-segment class="view-segment" [value]="view()" (ionChange)="setView($any($event).detail.value)">
+            <ion-segment-button value="summary"><ion-label>Summary</ion-label></ion-segment-button>
+            <ion-segment-button value="expenses"><ion-label>Expenses</ion-label></ion-segment-button>
+          </ion-segment>
+
+          @if (view() === 'summary') {
+            <h2 class="section-title">Breakdown</h2>
+            <div class="breakdown">
+              <div class="app-card">
+                <div class="bd-head"><span>By category</span><ion-icon name="pie-chart-outline"></ion-icon></div>
+                @if (byCategory().length === 0) {
+                  <p class="label-muted">No expenses.</p>
+                }
+                @for (group of byCategoryTop(); track group.label) {
+                  <div class="bd-row">
+                    <span class="bd-label">{{ group.label }}</span>
+                    <span class="bd-amount">{{ format(group.total) }}</span>
+                  </div>
+                }
+                @if (byCategory().length > 3) {
+                  <span class="link-action" (click)="setView('expenses')">
+                    View all <ion-icon name="chevron-forward"></ion-icon>
+                  </span>
+                }
+              </div>
+              <div class="app-card">
+                <div class="bd-head"><span>By beneficiary</span><ion-icon name="people-outline"></ion-icon></div>
+                @if (byBeneficiary().length === 0) {
+                  <p class="label-muted">No expenses.</p>
+                }
+                @for (group of byBeneficiaryTop(); track group.label) {
+                  <div class="bd-row">
+                    <span class="bd-label">{{ group.label }}</span>
+                    <span class="bd-amount">{{ format(group.total) }}</span>
+                  </div>
+                }
+                @if (byBeneficiary().length > 3) {
+                  <span class="link-action" (click)="setView('expenses')">
+                    View all <ion-icon name="chevron-forward"></ion-icon>
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="section-head">
+              <span class="section-title">Latest expenses</span>
+              @if (expenses().length > 3) {
+                <span class="link-action" (click)="setView('expenses')">
+                  View all <ion-icon name="chevron-forward"></ion-icon>
+                </span>
+              }
+            </div>
+            @if (expenses().length === 0) {
+              <div class="app-card text-muted">No expenses this month.</div>
+            } @else {
+              <div class="list-card">
+                <ion-list>
+                  @for (expense of latest(); track expense.id) {
+                    <ion-item button detail="false" (click)="edit(expense)">
+                      <app-category-icon slot="start" [name]="categoryName(expense.categoryId)"></app-category-icon>
+                      <ion-label>
+                        <h3 class="row-title">{{ categoryName(expense.categoryId) }}</h3>
+                        <p class="label-muted">{{ expense.expenseDate }}</p>
+                      </ion-label>
+                      <span slot="end" class="row-amount">{{ format(expense.amount) }}</span>
+                    </ion-item>
+                  }
+                </ion-list>
+              </div>
+            }
+          } @else {
+            @if (expenses().length === 0) {
+              <div class="app-card text-muted">No expenses this month.</div>
+            } @else {
+              <div class="list-card">
+                <ion-list>
+                  @for (expense of expenses(); track expense.id) {
+                    <ion-item button detail="false" (click)="edit(expense)">
+                      <app-category-icon slot="start" [name]="categoryName(expense.categoryId)"></app-category-icon>
+                      <ion-label>
+                        <h3 class="row-title">{{ categoryName(expense.categoryId) }}</h3>
+                        <p class="label-muted">
+                          {{ expense.expenseDate }}{{ expense.description ? ' · ' + expense.description : '' }}
+                        </p>
+                      </ion-label>
+                      <div slot="end" class="row-end">
+                        <span class="row-amount">{{ format(expense.amount) }}</span>
+                        @if (status() === 'open') {
+                          <ion-button fill="clear" color="danger" (click)="remove(expense, $event)">
+                            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+                          </ion-button>
+                        }
+                      </div>
+                    </ion-item>
+                  }
+                </ion-list>
+              </div>
+            }
           }
-        </ion-list>
+        </div>
       }
     </ion-content>
+    <app-tab-bar [roomId]="roomId" active="summary" (addExpense)="addExpense()"></app-tab-bar>
   `,
   styles: [
     `
-      .nav {
+      .month-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        margin: 4px 0 14px;
+      }
+      .month-nav .month-label {
+        font-weight: 700;
+        font-size: 1.05rem;
+      }
+      .nav-btn {
+        border: 1px solid var(--app-border);
+        border-radius: 50%;
+      }
+      .hero-pills {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .hero-actions ion-button {
+        flex: 1;
+        min-width: 132px;
+        margin: 0;
+      }
+      .view-segment {
+        margin: 16px 0;
+      }
+      .breakdown {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .bd-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        font-weight: 700;
+        margin-bottom: 10px;
       }
-      .total {
-        margin: 6px 0;
-        font-size: 2rem;
+      .bd-head ion-icon {
+        color: var(--app-primary);
+      }
+      .bd-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+      }
+      .bd-label {
+        color: var(--app-text-muted);
+      }
+      .bd-amount {
         font-weight: 700;
       }
-      .actions {
+      .row-title {
+        font-weight: 700;
+        margin: 0;
+      }
+      .row-amount {
+        font-weight: 700;
+      }
+      .row-end {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin: 12px 0;
+        align-items: center;
+        gap: 2px;
       }
     `,
   ],
@@ -156,11 +287,13 @@ interface Group {
     IonList,
     IonItem,
     IonLabel,
-    IonBadge,
-    IonNote,
-    IonText,
     IonIcon,
     IonSpinner,
+    IonSegment,
+    IonSegmentButton,
+    AppTabBarComponent,
+    CategoryIconComponent,
+    StatusPillComponent,
   ],
 })
 export class PeriodSummaryPage {
@@ -183,11 +316,13 @@ export class PeriodSummaryPage {
   readonly expenses = signal<Expense[]>([]);
   readonly monthKey = signal(toMonthKey(new Date()));
   readonly loading = signal(true);
+  readonly view = signal<'summary' | 'expenses'>('summary');
 
   readonly label = computed(() => monthLabel(this.monthKey()));
   readonly total = computed(() => this.expenses().reduce((sum, e) => sum + e.amount, 0));
   readonly status = computed(() => this.period()?.status ?? 'open');
   readonly isAdmin = computed(() => this.role() === 'admin');
+  readonly latest = computed(() => this.expenses().slice(0, 5));
 
   readonly byCategory = computed<Group[]>(() => {
     const totals = new Map<string, number>();
@@ -198,6 +333,8 @@ export class PeriodSummaryPage {
       .map(([categoryId, total]) => ({ label: this.categoryName(categoryId), total }))
       .sort((a, b) => b.total - a.total);
   });
+
+  readonly byCategoryTop = computed(() => this.byCategory().slice(0, 3));
 
   readonly byBeneficiary = computed<Group[]>(() => {
     const totals = new Map<string, number>();
@@ -213,7 +350,9 @@ export class PeriodSummaryPage {
       .sort((a, b) => b.total - a.total);
   });
 
-  private get roomId(): string {
+  readonly byBeneficiaryTop = computed(() => this.byBeneficiary().slice(0, 3));
+
+  get roomId(): string {
     return this.route.snapshot.paramMap.get('roomId') ?? '';
   }
 
@@ -253,6 +392,10 @@ export class PeriodSummaryPage {
     }
   }
 
+  setView(value: 'summary' | 'expenses'): void {
+    this.view.set(value);
+  }
+
   format(amount: number): string {
     return formatRoomAmount(amount, this.room()?.currency ?? 'ARS');
   }
@@ -265,22 +408,42 @@ export class PeriodSummaryPage {
     return this.status().replace('_', ' ');
   }
 
-  statusColor(): string {
+  statusTone(): StatusTone {
     switch (this.status()) {
       case 'open':
-        return 'success';
+        return 'open';
       case 'paid':
-        return 'primary';
+        return 'paid';
       case 'partially_paid':
         return 'warning';
       default:
-        return 'medium';
+        return 'muted';
     }
+  }
+
+  statusIcon(): string | null {
+    return this.status() === 'paid' ? 'checkmark-circle' : null;
   }
 
   async shift(delta: number): Promise<void> {
     this.monthKey.set(shiftMonthKey(this.monthKey(), delta));
     await this.load();
+  }
+
+  async addExpense(): Promise<void> {
+    const modal = await this.modalController.create({
+      component: AddExpenseModalComponent,
+      componentProps: {
+        roomId: this.roomId,
+        isAdmin: this.isAdmin(),
+        currency: this.room()?.currency ?? 'ARS',
+      },
+    });
+    await modal.present();
+    const { role } = await modal.onDidDismiss();
+    if (role === 'saved') {
+      await this.load();
+    }
   }
 
   async edit(expense: Expense): Promise<void> {
@@ -290,7 +453,12 @@ export class PeriodSummaryPage {
     }
     const modal = await this.modalController.create({
       component: AddExpenseModalComponent,
-      componentProps: { roomId: this.roomId, isAdmin: this.isAdmin(), expense },
+      componentProps: {
+        roomId: this.roomId,
+        isAdmin: this.isAdmin(),
+        currency: this.room()?.currency ?? 'ARS',
+        expense,
+      },
     });
     await modal.present();
     const { role } = await modal.onDidDismiss();
