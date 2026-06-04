@@ -4,6 +4,20 @@
 
 create extension if not exists "pgcrypto";
 
+-- Immutable helper used by generated columns and triggers.
+-- Avoid to_char(...) here because PostgreSQL does not treat it as immutable.
+create or replace function public.to_month_key(p_date date)
+returns text
+language sql
+immutable
+as $$
+  select (
+    extract(year from p_date)::int::text
+    || '-'
+    || lpad(extract(month from p_date)::int::text, 2, '0')
+  );
+$$;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
@@ -71,7 +85,7 @@ create table if not exists public.expenses (
   description text,
   expense_date date not null,
   -- Canonical month_key derivation lives in the database so client and server always agree.
-  month_key text generated always as (to_char(expense_date, 'YYYY-MM')) stored,
+  month_key text generated always as (public.to_month_key(expense_date)) stored,
   created_by uuid not null references public.profiles(id),
   updated_by uuid references public.profiles(id),
   deleted_by uuid references public.profiles(id),

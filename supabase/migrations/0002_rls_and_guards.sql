@@ -213,10 +213,10 @@ declare
 begin
   if (tg_op = 'DELETE') then
     v_room := old.room_id;
-    v_month := old.month_key;
+    v_month := public.to_month_key(old.expense_date);
   else
     v_room := new.room_id;
-    v_month := new.month_key;
+    v_month := public.to_month_key(new.expense_date);
   end if;
 
   if exists (
