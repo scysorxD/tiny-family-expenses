@@ -75,4 +75,32 @@ export class AuthService {
     await this.supabase.client.auth.signOut();
     this.currentUser.set(null);
   }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const redirectTo =
+      typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+    const { error } = await this.supabase.client.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      throw error;
+    }
+  }
+
+  async setSessionFromTokens(accessToken: string, refreshToken: string): Promise<void> {
+    const { data, error } = await this.supabase.client.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) {
+      throw error;
+    }
+    this.currentUser.set(data.session?.user ?? null);
+  }
+
+  async updatePassword(newPassword: string): Promise<void> {
+    const { data, error } = await this.supabase.client.auth.updateUser({ password: newPassword });
+    if (error) {
+      throw error;
+    }
+    this.currentUser.set(data.user ?? null);
+  }
 }

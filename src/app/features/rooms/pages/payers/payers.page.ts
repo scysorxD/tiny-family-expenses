@@ -12,7 +12,6 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonSpinner,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -20,6 +19,7 @@ import { Payer } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PayerService } from '../../../../core/services/payer.service';
 import { RoomService } from '../../../../core/services/room.service';
+import { AppSkeletonComponent, EmptyStateComponent } from '../../../../shared/ui';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
@@ -40,15 +40,19 @@ import { describeError } from '../../../../shared/utils';
     </ion-header>
     <ion-content>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="list"></app-skeleton>
       } @else {
         <div class="page-pad">
           @if (!isAdmin()) {
             <div class="app-card text-muted">Only admins can manage payers.</div>
           } @else if (items().length === 0) {
-            <div class="app-card text-muted">
-              No payers yet. Add who splits the bill (e.g. Sibling 1).
-            </div>
+            <app-empty-state
+              icon="wallet-outline"
+              title="No payers yet"
+              message="Add who splits the bill, e.g. Sibling 1."
+              actionLabel="Add payer"
+              (action)="create()"
+            ></app-empty-state>
           } @else {
             <div class="list-card">
               <ion-list>
@@ -82,7 +86,8 @@ import { describeError } from '../../../../shared/utils';
     IonLabel,
     IonBadge,
     IonIcon,
-    IonSpinner,
+    AppSkeletonComponent,
+    EmptyStateComponent,
   ],
 })
 export class PayersPage {

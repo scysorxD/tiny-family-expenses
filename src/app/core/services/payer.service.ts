@@ -3,8 +3,10 @@ import { Capacitor } from '@capacitor/core';
 import { Payer } from '../models';
 import { NamedActiveRow, mapPayer } from '../../data/remote/supabase.mappers';
 import { LocalStore } from '../../data/local/local-store.service';
+import { newId } from '../../shared/utils';
 import { ConnectivityService } from './connectivity.service';
 import { SupabaseService } from './supabase.service';
+import { SyncQueueService } from './sync-queue.service';
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +15,7 @@ export class PayerService {
   private readonly supabase = inject(SupabaseService);
   private readonly store = inject(LocalStore);
   private readonly connectivity = inject(ConnectivityService);
+  private readonly syncQueue = inject(SyncQueueService);
 
   private get client() {
     return this.supabase.client;
@@ -49,9 +52,23 @@ export class PayerService {
   }
 
   async create(roomId: string, name: string): Promise<Payer> {
+    const trimmed = name.trim();
+
+    if (this.native) {
+      const payer: Payer = { id: newId(), roomId, name: trimmed, isActive: true };
+      await this.store.upsertPayerLocal(payer);
+      await this.syncQueue.enqueueWrite('payer', 'create', `payer:${payer.id}:create`, {
+        id: payer.id,
+        roomId,
+        name: trimmed,
+      });
+      void this.syncQueue.process('ref-write');
+      return payer;
+    }
+
     const { data, error } = await this.client
       .from('payers')
-      .insert({ room_id: roomId, name: name.trim() })
+      .insert({ room_id: roomId, name: trimmed })
       .select('*')
       .single();
     if (error) {
@@ -61,9 +78,21 @@ export class PayerService {
   }
 
   async rename(id: string, name: string): Promise<void> {
+    const trimmed = name.trim();
+
+    if (this.native) {
+      await this.store.updatePayerLocal(id, { name: trimmed });
+      await this.syncQueue.enqueueWrite('payer', 'update', `payer:${id}:rename`, {
+        id,
+        name: trimmed,
+      });
+      void this.syncQueue.process('ref-write');
+      return;
+    }
+
     const { error } = await this.client
       .from('payers')
-      .update({ name: name.trim(), updated_at: new Date().toISOString() })
+      .update({ name: trimmed, updated_at: new Date().toISOString() })
       .eq('id', id);
     if (error) {
       throw error;
@@ -71,6 +100,13 @@ export class PayerService {
   }
 
   async setActive(id: string, isActive: boolean): Promise<void> {
+    if (this.native) {
+      await this.store.updatePayerLocal(id, { isActive });
+      await this.syncQueue.enqueueWrite('payer', 'update', `payer:${id}:active`, { id, isActive });
+      void this.syncQueue.process('ref-write');
+      return;
+    }
+
     const { error } = await this.client
       .from('payers')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
@@ -81,6 +117,13 @@ export class PayerService {
   }
 
   async delete(id: string): Promise<void> {
+    if (this.native) {
+      await this.store.deletePayerLocal(id);
+      await this.syncQueue.enqueueWrite('payer', 'delete', `payer:${id}:delete`, { id });
+      void this.syncQueue.process('ref-write');
+      return;
+    }
+
     const { error } = await this.client.from('payers').delete().eq('id', id);
     if (error) {
       throw error;

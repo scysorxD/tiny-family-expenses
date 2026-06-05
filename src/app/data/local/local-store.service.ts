@@ -230,12 +230,42 @@ export class LocalStore {
     return (result.values ?? []).map((row) => this.mapQueueItem(row as Row));
   }
 
+  async listQueueAll(): Promise<SyncQueueItem[]> {
+    const db = await this.connection();
+    const result = await db.query(
+      `SELECT * FROM sync_queue WHERE status IN ('pending_sync','sync_failed','conflict') ORDER BY created_at ASC;`,
+    );
+    return (result.values ?? []).map((row) => this.mapQueueItem(row as Row));
+  }
+
   async pendingCount(): Promise<number> {
     const db = await this.connection();
     const result = await db.query(
-      `SELECT COUNT(*) AS count FROM sync_queue WHERE status IN ('pending_sync','sync_failed','conflict');`,
+      `SELECT COUNT(*) AS count FROM sync_queue WHERE status IN ('pending_sync','sync_failed');`,
     );
     return num((result.values?.[0] as Row)?.['count']);
+  }
+
+  async conflictCount(): Promise<number> {
+    const db = await this.connection();
+    const result = await db.query(
+      `SELECT COUNT(*) AS count FROM sync_queue WHERE status = 'conflict';`,
+    );
+    return num((result.values?.[0] as Row)?.['count']);
+  }
+
+  async resetQueueItem(localId: string): Promise<void> {
+    const db = await this.connection();
+    await db.run(
+      `UPDATE sync_queue SET status = 'pending_sync', attempt_count = 0, error_message = NULL WHERE local_id = ?;`,
+      [localId],
+    );
+  }
+
+  async deleteExpenseLocal(id: string): Promise<void> {
+    const db = await this.connection();
+    await db.run('DELETE FROM expense_beneficiaries WHERE expense_id = ?;', [id]);
+    await db.run('DELETE FROM expenses WHERE id = ?;', [id]);
   }
 
   async setQueueStatus(localId: string, status: SyncStatus, error?: string): Promise<void> {
@@ -378,5 +408,113 @@ export class LocalStore {
       name: str((row as Row)['name']),
       isActive: bool((row as Row)['is_active']),
     }));
+  }
+
+  // --- Reference-data local writes (offline-first) ----------------------
+
+  async upsertCategoryLocal(category: Category, syncStatus: SyncStatus): Promise<void> {
+    const db = await this.connection();
+    await db.run(
+      `INSERT INTO categories
+         (id, room_id, name, is_active, created_by, created_at, updated_at, sync_status, cached_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         is_active = excluded.is_active,
+         updated_at = excluded.updated_at,
+         sync_status = excluded.sync_status;`,
+      [
+        category.id,
+        category.roomId,
+        category.name,
+        category.isActive ? 1 : 0,
+        category.createdBy,
+        category.createdAt,
+        category.updatedAt ?? null,
+        syncStatus,
+        nowIso(),
+      ],
+    );
+  }
+
+  async deleteCategoryLocal(id: string): Promise<void> {
+    const db = await this.connection();
+    await db.run('DELETE FROM categories WHERE id = ?;', [id]);
+  }
+
+  async setCategorySyncStatus(id: string, status: SyncStatus): Promise<void> {
+    const db = await this.connection();
+    await db.run('UPDATE categories SET sync_status = ? WHERE id = ?;', [status, id]);
+  }
+
+  async updateCategoryLocal(
+    id: string,
+    patch: { name?: string; isActive?: boolean },
+    syncStatus: SyncStatus,
+  ): Promise<void> {
+    const db = await this.connection();
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    if (patch.name !== undefined) {
+      sets.push('name = ?');
+      params.push(patch.name);
+    }
+    if (patch.isActive !== undefined) {
+      sets.push('is_active = ?');
+      params.push(patch.isActive ? 1 : 0);
+    }
+    sets.push('sync_status = ?', 'updated_at = ?');
+    params.push(syncStatus, nowIso(), id);
+    await db.run(`UPDATE categories SET ${sets.join(', ')} WHERE id = ?;`, params);
+  }
+
+  async upsertBeneficiaryLocal(beneficiary: Beneficiary): Promise<void> {
+    await this.cacheBeneficiaries([beneficiary]);
+  }
+
+  async updateBeneficiaryLocal(id: string, patch: { name?: string; isActive?: boolean }): Promise<void> {
+    await this.updateNamedRow('beneficiaries', id, patch);
+  }
+
+  async deleteBeneficiaryLocal(id: string): Promise<void> {
+    const db = await this.connection();
+    await db.run('DELETE FROM beneficiaries WHERE id = ?;', [id]);
+  }
+
+  async upsertPayerLocal(payer: Payer): Promise<void> {
+    await this.cachePayers([payer]);
+  }
+
+  async updatePayerLocal(id: string, patch: { name?: string; isActive?: boolean }): Promise<void> {
+    await this.updateNamedRow('payers', id, patch);
+  }
+
+  async deletePayerLocal(id: string): Promise<void> {
+    const db = await this.connection();
+    await db.run('DELETE FROM payers WHERE id = ?;', [id]);
+  }
+
+  private async updateNamedRow(
+    table: 'beneficiaries' | 'payers',
+    id: string,
+    patch: { name?: string; isActive?: boolean },
+  ): Promise<void> {
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    if (patch.name !== undefined) {
+      sets.push('name = ?');
+      params.push(patch.name);
+    }
+    if (patch.isActive !== undefined) {
+      sets.push('is_active = ?');
+      params.push(patch.isActive ? 1 : 0);
+    }
+    if (sets.length === 0) {
+      return;
+    }
+    sets.push('cached_at = ?');
+    params.push(nowIso(), id);
+    const db = await this.connection();
+    await db.run(`UPDATE ${table} SET ${sets.join(', ')} WHERE id = ?;`, params);
   }
 }

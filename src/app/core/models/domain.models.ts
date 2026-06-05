@@ -93,9 +93,11 @@ export interface PeriodPayerStatus {
   markedPaidBy?: string;
 }
 
+export type SyncEntityType = 'expense' | 'category' | 'beneficiary' | 'payer';
+
 export interface SyncQueueItem {
   localId: string;
-  entityType: 'expense' | 'category';
+  entityType: SyncEntityType;
   operation: 'create' | 'update' | 'delete';
   payload: unknown;
   attemptCount: number;

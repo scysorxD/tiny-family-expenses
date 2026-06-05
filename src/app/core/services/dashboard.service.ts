@@ -6,6 +6,11 @@ export interface MonthlyTotal {
   total: number;
 }
 
+export interface CategoryTotal {
+  label: string;
+  total: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -43,5 +48,33 @@ export class DashboardService {
     }
     const sum = totals.reduce((acc, item) => acc + item.total, 0);
     return sum / totals.length;
+  }
+
+  async categoryBreakdown(roomId: string, monthKey: string): Promise<CategoryTotal[]> {
+    const { data, error } = await this.client
+      .from('expenses')
+      .select('amount, category:categories(name)')
+      .eq('room_id', roomId)
+      .eq('month_key', monthKey)
+      .is('deleted_at', null);
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = (data ?? []) as unknown as Array<{
+      amount: number | string;
+      category: { name: string } | null;
+    }>;
+
+    const totals = new Map<string, number>();
+    for (const row of rows) {
+      const label = row.category?.name ?? 'Category';
+      totals.set(label, (totals.get(label) ?? 0) + Number(row.amount));
+    }
+
+    return [...totals.entries()]
+      .map(([label, total]) => ({ label, total }))
+      .sort((a, b) => b.total - a.total);
   }
 }

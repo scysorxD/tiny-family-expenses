@@ -12,14 +12,13 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonSpinner,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
 import { Category } from '../../../../core/models';
 import { CategoryService } from '../../../../core/services/category.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
-import { CategoryIconComponent } from '../../../../shared/ui';
+import { AppSkeletonComponent, CategoryIconComponent, EmptyStateComponent } from '../../../../shared/ui';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
@@ -40,11 +39,17 @@ import { describeError } from '../../../../shared/utils';
     </ion-header>
     <ion-content>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="list"></app-skeleton>
       } @else {
         <div class="page-pad">
           @if (categories().length === 0) {
-            <div class="app-card text-muted">No categories yet. Tap + to add one.</div>
+            <app-empty-state
+              icon="pricetag-outline"
+              title="No categories yet"
+              message="Add categories like Food, Transport or Medicine to organize expenses."
+              actionLabel="Add category"
+              (action)="create()"
+            ></app-empty-state>
           } @else {
             <div class="list-card">
               <ion-list>
@@ -78,8 +83,9 @@ import { describeError } from '../../../../shared/utils';
     IonLabel,
     IonBadge,
     IonIcon,
-    IonSpinner,
+    AppSkeletonComponent,
     CategoryIconComponent,
+    EmptyStateComponent,
   ],
 })
 export class CategoryListPage {

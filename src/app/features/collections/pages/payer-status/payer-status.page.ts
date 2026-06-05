@@ -11,16 +11,23 @@ import {
   IonItem,
   IonLabel,
   IonList,
-  IonSpinner,
+  IonRefresher,
+  IonRefresherContent,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
 import { Period, Room, RoomRole } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PayerStatusView, PeriodService } from '../../../../core/services/period.service';
+import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
-import { AppTabBarComponent, StatusPillComponent } from '../../../../shared/ui';
+import {
+  AppSkeletonComponent,
+  AppTabBarComponent,
+  EmptyStateComponent,
+  StatusPillComponent,
+} from '../../../../shared/ui';
 import {
   describeError,
   formatRoomAmount,
@@ -41,8 +48,11 @@ import {
       </ion-toolbar>
     </ion-header>
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="summary"></app-skeleton>
       } @else {
         <div class="page-pad fab-safe">
           <div class="month-nav">
@@ -56,10 +66,11 @@ import {
           </div>
 
           @if (!period() || period()?.status === 'open') {
-            <div class="app-card empty-card">
-              <ion-icon name="lock-closed-outline"></ion-icon>
-              <span>Close the month to track who has paid.</span>
-            </div>
+            <app-empty-state
+              icon="lock-closed-outline"
+              title="Month still open"
+              message="Close the month from the Summary screen to track who has paid."
+            ></app-empty-state>
           } @else {
             <div class="hero-card">
               <p class="label-muted">{{ label }}</p>
@@ -159,8 +170,11 @@ import {
     IonItem,
     IonLabel,
     IonIcon,
-    IonSpinner,
+    IonRefresher,
+    IonRefresherContent,
+    AppSkeletonComponent,
     AppTabBarComponent,
+    EmptyStateComponent,
     StatusPillComponent,
   ],
 })
@@ -170,6 +184,9 @@ export class PayerStatusPage {
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
+  private readonly realtime = inject(RealtimeService);
+
+  private realtimeOff?: () => void;
 
   readonly room = signal<Room | null>(null);
   readonly role = signal<RoomRole | null>(null);
@@ -196,10 +213,25 @@ export class PayerStatusPage {
   async ionViewWillEnter(): Promise<void> {
     this.monthKey = this.route.snapshot.queryParamMap.get('month') ?? toMonthKey(new Date());
     await this.load();
+    this.realtimeOff = this.realtime.onRoomChanges(this.roomId, ['periods'], () =>
+      void this.load(false),
+    );
   }
 
-  private async load(): Promise<void> {
-    this.loading.set(true);
+  ionViewWillLeave(): void {
+    this.realtimeOff?.();
+    this.realtimeOff = undefined;
+  }
+
+  async handleRefresh(event: CustomEvent): Promise<void> {
+    await this.load(false);
+    (event.target as HTMLIonRefresherElement | null)?.complete();
+  }
+
+  private async load(showLoader = true): Promise<void> {
+    if (showLoader) {
+      this.loading.set(true);
+    }
     try {
       const [room, role, period] = await Promise.all([
         this.roomService.getRoom(this.roomId),

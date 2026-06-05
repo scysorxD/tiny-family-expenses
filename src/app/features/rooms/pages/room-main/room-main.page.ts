@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ViewChild, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   ActionSheetButton,
@@ -10,14 +10,15 @@ import {
   IonButton,
   IonButtons,
   IonContent,
-  IonFab,
-  IonFabButton,
+  IonDatetime,
   IonHeader,
   IonIcon,
   IonItem,
   IonLabel,
   IonList,
-  IonSpinner,
+  IonPopover,
+  IonRefresher,
+  IonRefresherContent,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -28,10 +29,18 @@ import { ExpenseService } from '../../../../core/services/expense.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
+import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { SyncQueueService } from '../../../../core/services/sync-queue.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
-import { AppTabBarComponent, CategoryIconComponent, StatusPillComponent, StatusTone } from '../../../../shared/ui';
+import {
+  AppSkeletonComponent,
+  AppTabBarComponent,
+  CategoryIconComponent,
+  EmptyStateComponent,
+  StatusPillComponent,
+  StatusTone,
+} from '../../../../shared/ui';
 import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../../../shared/utils';
 
 @Component({
@@ -61,14 +70,26 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
       </ion-toolbar>
     </ion-header>
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="home"></app-skeleton>
       } @else {
         <div class="page-pad fab-safe">
-          <div class="month-row">
+          <button type="button" class="month-row" id="month-trigger">
             <span>{{ label() }}</span>
             <ion-icon name="chevron-down-outline"></ion-icon>
-          </div>
+          </button>
+          <ion-popover trigger="month-trigger" [keepContentsMounted]="true">
+            <ng-template>
+              <ion-datetime
+                presentation="month-year"
+                [value]="datetimeValue()"
+                (ionChange)="onMonthChange($any($event).detail.value)"
+              ></ion-datetime>
+            </ng-template>
+          </ion-popover>
 
           <div class="hero-card">
             <p class="label-muted">Total paid</p>
@@ -81,6 +102,8 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
               ></app-status-pill>
               @if (sync.pending() > 0) {
                 <app-status-pill
+                  class="pill-link"
+                  (click)="go('sync')"
                   [label]="sync.pending() + ' to sync'"
                   tone="warning"
                   icon="cloud-offline-outline"
@@ -88,6 +111,8 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
               }
               @if (sync.conflicts() > 0) {
                 <app-status-pill
+                  class="pill-link"
+                  (click)="go('sync')"
                   [label]="sync.conflicts() + ' conflict'"
                   tone="danger"
                   icon="warning-outline"
@@ -121,7 +146,13 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
           </div>
 
           @if (expenses().length === 0) {
-            <div class="app-card text-muted">No expenses yet. Tap + to add the first one.</div>
+            <app-empty-state
+              icon="receipt-outline"
+              title="No expenses yet"
+              message="Tap + to add your first expense for this month."
+              actionLabel="Add expense"
+              (action)="addExpense()"
+            ></app-empty-state>
           } @else {
             <div class="list-card">
               <ion-list>
@@ -149,11 +180,6 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
           }
         </div>
       }
-      <!-- <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button (click)="addExpense()" [disabled]="loading()">
-          <ion-icon name="add"></ion-icon>
-        </ion-fab-button>
-      </ion-fab> -->
     </ion-content>
     <app-tab-bar [roomId]="roomId" active="home" (addExpense)="addExpense()"></app-tab-bar>
   `,
@@ -175,6 +201,9 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
         flex-wrap: wrap;
         gap: 8px;
         margin-top: 10px;
+      }
+      .pill-link {
+        cursor: pointer;
       }
       .row-title {
         font-weight: 700;
@@ -206,9 +235,14 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     IonItem,
     IonLabel,
     IonIcon,
-    IonSpinner,
+    IonDatetime,
+    IonPopover,
+    IonRefresher,
+    IonRefresherContent,
+    AppSkeletonComponent,
     AppTabBarComponent,
     CategoryIconComponent,
+    EmptyStateComponent,
     StatusPillComponent,
   ],
 })
@@ -224,10 +258,15 @@ export class RoomMainPage {
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
   private readonly actionSheet = inject(ActionSheetController);
+  private readonly realtime = inject(RealtimeService);
   readonly sync = inject(SyncQueueService);
+
+  private realtimeOff?: () => void;
 
   private readonly categoryMap = signal<Map<string, string>>(new Map());
   private readonly beneficiaryMap = signal<Map<string, string>>(new Map());
+
+  @ViewChild(IonPopover) private monthPopover?: IonPopover;
 
   readonly room = signal<Room | null>(null);
   readonly role = signal<RoomRole | null>(null);
@@ -235,8 +274,9 @@ export class RoomMainPage {
   readonly status = signal<PeriodStatus>('open');
   readonly loading = signal(true);
 
-  readonly monthKey = toMonthKey(new Date());
-  readonly label = computed(() => monthLabel(this.monthKey));
+  readonly monthKey = signal(toMonthKey(new Date()));
+  readonly label = computed(() => monthLabel(this.monthKey()));
+  readonly datetimeValue = computed(() => `${this.monthKey()}-01`);
   readonly total = computed(() =>
     this.expenses().reduce((sum, expense) => sum + expense.amount, 0),
   );
@@ -249,18 +289,28 @@ export class RoomMainPage {
     await this.preferences.setLastRoomId(this.roomId);
     void this.sync.process('room-enter');
     await this.load();
+    this.realtimeOff = this.realtime.onRoomChanges(this.roomId, ['expenses', 'periods'], () =>
+      void this.load(false),
+    );
   }
 
-  private async load(): Promise<void> {
-    this.loading.set(true);
+  ionViewWillLeave(): void {
+    this.realtimeOff?.();
+    this.realtimeOff = undefined;
+  }
+
+  private async load(showLoader = true): Promise<void> {
+    if (showLoader) {
+      this.loading.set(true);
+    }
     try {
       const [room, role, categories, beneficiaries, period, expenses] = await Promise.all([
         this.roomService.getRoom(this.roomId),
         this.roomService.getMyRole(this.roomId),
         this.categoryService.listCategories(this.roomId, true),
         this.beneficiaryService.list(this.roomId, true),
-        this.periodService.getPeriod(this.roomId, this.monthKey),
-        this.expenseService.listByMonth(this.roomId, this.monthKey),
+        this.periodService.getPeriod(this.roomId, this.monthKey()),
+        this.expenseService.listByMonth(this.roomId, this.monthKey()),
       ]);
 
       this.room.set(room);
@@ -366,6 +416,7 @@ export class RoomMainPage {
   async openMore(): Promise<void> {
     const buttons: ActionSheetButton[] = [
       { text: 'Dashboard', icon: 'stats-chart-outline', handler: () => this.go('dashboard') },
+      { text: 'Sync status', icon: 'sync-outline', handler: () => this.go('sync') },
       { text: 'Members', icon: 'people-outline', handler: () => this.go('members') },
       { text: 'Beneficiaries', icon: 'person-outline', handler: () => this.go('beneficiaries') },
       { text: 'Payers', icon: 'wallet-outline', handler: () => this.go('payers') },
@@ -381,6 +432,26 @@ export class RoomMainPage {
   async syncNow(): Promise<void> {
     await this.sync.process('manual');
     await this.load();
+  }
+
+  async onMonthChange(value: string | string[] | null | undefined): Promise<void> {
+    const iso = Array.isArray(value) ? value[0] : value;
+    await this.monthPopover?.dismiss();
+    if (!iso) {
+      return;
+    }
+    const key = iso.slice(0, 7);
+    if (key === this.monthKey()) {
+      return;
+    }
+    this.monthKey.set(key);
+    await this.load();
+  }
+
+  async handleRefresh(event: CustomEvent): Promise<void> {
+    await this.sync.process('manual');
+    await this.load(false);
+    (event.target as HTMLIonRefresherElement | null)?.complete();
   }
 
   go(section: string): void {

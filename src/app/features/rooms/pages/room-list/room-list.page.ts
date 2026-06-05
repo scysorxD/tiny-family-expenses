@@ -7,20 +7,24 @@ import {
   IonFab,
   IonFabButton,
   IonIcon,
-  IonSpinner,
+  IonRefresher,
+  IonRefresherContent,
 } from '@ionic/angular/standalone';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { RoomMembership } from '../../../../data/remote/supabase.mappers';
-import { AppTabBarComponent } from '../../../../shared/ui';
+import { AppSkeletonComponent, EmptyStateComponent } from '../../../../shared/ui';
 import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-room-list',
   template: `
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       <div class="home-wrap fab-safe">
         <div class="greeting-row">
           <div class="greeting-text">
@@ -36,11 +40,17 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
         </div>
 
         @if (loading()) {
-          <div class="center-pad"><ion-spinner></ion-spinner></div>
+          <app-skeleton variant="list" [rows]="3"></app-skeleton>
         } @else {
           <h2 class="section-title">My rooms</h2>
           @if (rooms().length === 0) {
-            <div class="app-card text-muted">You have no rooms yet. Create your first one.</div>
+            <app-empty-state
+              icon="home-outline"
+              title="No rooms yet"
+              message="Create your first room to start tracking shared expenses."
+              actionLabel="Create room"
+              (action)="create()"
+            ></app-empty-state>
           } @else {
             <div class="rooms">
               @for (membership of rooms(); track membership.room.id) {
@@ -194,10 +204,13 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
     IonContent,
     IonButton,
     IonIcon,
-    IonSpinner,
     IonFab,
     IonFabButton,
-    ],
+    IonRefresher,
+    IonRefresherContent,
+    AppSkeletonComponent,
+    EmptyStateComponent,
+  ],
 })
 export class RoomListPage {
   private readonly roomService = inject(RoomService);
@@ -241,8 +254,10 @@ export class RoomListPage {
     await this.load();
   }
 
-  private async load(): Promise<void> {
-    this.loading.set(true);
+  private async load(showLoader = true): Promise<void> {
+    if (showLoader) {
+      this.loading.set(true);
+    }
     try {
       this.rooms.set(await this.roomService.listMyRooms());
     } catch (error) {
@@ -250,6 +265,11 @@ export class RoomListPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async handleRefresh(event: CustomEvent): Promise<void> {
+    await this.load(false);
+    (event.target as HTMLIonRefresherElement | null)?.complete();
   }
 
   async open(roomId: string): Promise<void> {

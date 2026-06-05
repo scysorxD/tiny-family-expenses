@@ -11,9 +11,10 @@ import {
   IonItem,
   IonLabel,
   IonList,
+  IonRefresher,
+  IonRefresherContent,
   IonSegment,
   IonSegmentButton,
-  IonSpinner,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -23,9 +24,19 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { ExpenseService } from '../../../../core/services/expense.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
+import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
-import { AppTabBarComponent, CategoryIconComponent, StatusPillComponent, StatusTone } from '../../../../shared/ui';
+import {
+  AppSkeletonComponent,
+  AppTabBarComponent,
+  CategoryIconComponent,
+  DonutChartComponent,
+  DonutDatum,
+  EmptyStateComponent,
+  StatusPillComponent,
+  StatusTone,
+} from '../../../../shared/ui';
 import {
   describeError,
   formatRoomAmount,
@@ -51,8 +62,11 @@ interface Group {
       </ion-toolbar>
     </ion-header>
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="summary"></app-skeleton>
       } @else {
         <div class="page-pad fab-safe">
           <div class="month-nav">
@@ -106,6 +120,8 @@ interface Group {
                 <div class="bd-head"><span>By category</span><ion-icon name="pie-chart-outline"></ion-icon></div>
                 @if (byCategory().length === 0) {
                   <p class="label-muted">No expenses.</p>
+                } @else {
+                  <app-donut-chart [data]="categoryChart()" [centerLabel]="shortTotal()"></app-donut-chart>
                 }
                 @for (group of byCategoryTop(); track group.label) {
                   <div class="bd-row">
@@ -147,7 +163,13 @@ interface Group {
               }
             </div>
             @if (expenses().length === 0) {
-              <div class="app-card text-muted">No expenses this month.</div>
+              <app-empty-state
+                icon="receipt-outline"
+                title="No expenses this month"
+                message="Add an expense to start the monthly summary."
+                actionLabel="Add expense"
+                (action)="addExpense()"
+              ></app-empty-state>
             } @else {
               <div class="list-card">
                 <ion-list>
@@ -166,7 +188,13 @@ interface Group {
             }
           } @else {
             @if (expenses().length === 0) {
-              <div class="app-card text-muted">No expenses this month.</div>
+              <app-empty-state
+                icon="receipt-outline"
+                title="No expenses this month"
+                message="Add an expense to start the monthly summary."
+                actionLabel="Add expense"
+                (action)="addExpense()"
+              ></app-empty-state>
             } @else {
               <div class="list-card">
                 <ion-list>
@@ -288,11 +316,15 @@ interface Group {
     IonItem,
     IonLabel,
     IonIcon,
-    IonSpinner,
+    IonRefresher,
+    IonRefresherContent,
     IonSegment,
     IonSegmentButton,
+    AppSkeletonComponent,
     AppTabBarComponent,
     CategoryIconComponent,
+    DonutChartComponent,
+    EmptyStateComponent,
     StatusPillComponent,
   ],
 })
@@ -306,6 +338,9 @@ export class PeriodSummaryPage {
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
+  private readonly realtime = inject(RealtimeService);
+
+  private realtimeOff?: () => void;
 
   private readonly categoryMap = signal<Map<string, string>>(new Map());
   private readonly beneficiaryMap = signal<Map<string, string>>(new Map());
@@ -335,6 +370,10 @@ export class PeriodSummaryPage {
   });
 
   readonly byCategoryTop = computed(() => this.byCategory().slice(0, 3));
+
+  readonly categoryChart = computed<DonutDatum[]>(() =>
+    this.byCategory().map((group) => ({ label: group.label, value: group.total })),
+  );
 
   readonly byBeneficiary = computed<Group[]>(() => {
     const totals = new Map<string, number>();
@@ -366,10 +405,25 @@ export class PeriodSummaryPage {
       this.monthKey.set(month);
     }
     await this.load();
+    this.realtimeOff = this.realtime.onRoomChanges(this.roomId, ['expenses', 'periods'], () =>
+      void this.load(false),
+    );
   }
 
-  private async load(): Promise<void> {
-    this.loading.set(true);
+  ionViewWillLeave(): void {
+    this.realtimeOff?.();
+    this.realtimeOff = undefined;
+  }
+
+  async handleRefresh(event: CustomEvent): Promise<void> {
+    await this.load(false);
+    (event.target as HTMLIonRefresherElement | null)?.complete();
+  }
+
+  private async load(showLoader = true): Promise<void> {
+    if (showLoader) {
+      this.loading.set(true);
+    }
     try {
       const [room, role, categories, beneficiaries, period, expenses] = await Promise.all([
         this.roomService.getRoom(this.roomId),
@@ -398,6 +452,11 @@ export class PeriodSummaryPage {
 
   format(amount: number): string {
     return formatRoomAmount(amount, this.room()?.currency ?? 'ARS');
+  }
+
+  shortTotal(): string {
+    const value = this.total();
+    return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value));
   }
 
   categoryName(categoryId: string): string {
