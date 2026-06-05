@@ -149,11 +149,11 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
           }
         </div>
       }
-      <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+      <!-- <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button (click)="addExpense()" [disabled]="loading()">
           <ion-icon name="add"></ion-icon>
         </ion-fab-button>
-      </ion-fab>
+      </ion-fab> -->
     </ion-content>
     <app-tab-bar [roomId]="roomId" active="home" (addExpense)="addExpense()"></app-tab-bar>
   `,
@@ -206,8 +206,6 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     IonItem,
     IonLabel,
     IonIcon,
-    IonFab,
-    IonFabButton,
     IonSpinner,
     AppTabBarComponent,
     CategoryIconComponent,

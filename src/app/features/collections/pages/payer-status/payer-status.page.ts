@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ModalController } from '@ionic/angular/standalone';
 import {
   IonBackButton,
+  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
@@ -20,7 +21,13 @@ import { PayerStatusView, PeriodService } from '../../../../core/services/period
 import { RoomService } from '../../../../core/services/room.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
 import { AppTabBarComponent, StatusPillComponent } from '../../../../shared/ui';
-import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../../../shared/utils';
+import {
+  describeError,
+  formatRoomAmount,
+  monthLabel,
+  shiftMonthKey,
+  toMonthKey,
+} from '../../../../shared/utils';
 
 @Component({
   selector: 'app-payer-status',
@@ -36,45 +43,55 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     <ion-content>
       @if (loading()) {
         <div class="center-pad"><ion-spinner></ion-spinner></div>
-      } @else if (!period() || period()?.status === 'open') {
-        <div class="page-pad fab-safe">
-          <div class="app-card empty-card">
-            <ion-icon name="lock-closed-outline"></ion-icon>
-            <span>Close the month to track who has paid.</span>
-          </div>
-        </div>
       } @else {
         <div class="page-pad fab-safe">
-          <div class="hero-card">
-            <p class="label-muted">{{ label }}</p>
-            <div class="amount-hero">{{ format(period()?.systemTotal ?? 0) }}</div>
-            <p class="label-muted">
-              {{ format(period()?.systemAmountPerPayer ?? 0) }} each · {{ period()?.payerCount }} payers
-            </p>
+          <div class="month-nav">
+            <ion-button fill="clear" class="nav-btn" (click)="shift(-1)">
+              <ion-icon slot="icon-only" name="chevron-back"></ion-icon>
+            </ion-button>
+            <span class="month-label">{{ label }}</span>
+            <ion-button fill="clear" class="nav-btn" (click)="shift(1)">
+              <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
+            </ion-button>
           </div>
 
-          <h2 class="section-title">Payers</h2>
-          <div class="list-card">
-            <ion-list>
-              @for (payer of payers(); track payer.id) {
-                <ion-item [button]="isAdmin()" detail="false" (click)="toggle(payer)">
-                  <span slot="start" class="payer-icon"><ion-icon name="person-outline"></ion-icon></span>
-                  <ion-label>
-                    <h3 class="row-title">{{ payer.payerName }}</h3>
-                    <p class="label-muted">{{ format(payer.amountDue) }}</p>
-                  </ion-label>
-                  <app-status-pill
-                    slot="end"
-                    [label]="payer.status"
-                    [tone]="payer.status === 'paid' ? 'open' : 'muted'"
-                    [icon]="payer.status === 'paid' ? 'checkmark-circle' : null"
-                  ></app-status-pill>
-                </ion-item>
-              }
-            </ion-list>
-          </div>
-          @if (!isAdmin()) {
-            <p class="label-muted ion-margin-top">Only admins can mark payments.</p>
+          @if (!period() || period()?.status === 'open') {
+            <div class="app-card empty-card">
+              <ion-icon name="lock-closed-outline"></ion-icon>
+              <span>Close the month to track who has paid.</span>
+            </div>
+          } @else {
+            <div class="hero-card">
+              <p class="label-muted">{{ label }}</p>
+              <div class="amount-hero">{{ format(period()?.systemTotal ?? 0) }}</div>
+              <p class="label-muted">
+                {{ format(period()?.systemAmountPerPayer ?? 0) }} each - {{ period()?.payerCount }} payers
+              </p>
+            </div>
+
+            <h2 class="section-title">Payers</h2>
+            <div class="list-card">
+              <ion-list>
+                @for (payer of payers(); track payer.id) {
+                  <ion-item [button]="isAdmin()" detail="false" (click)="toggle(payer)">
+                    <span slot="start" class="payer-icon"><ion-icon name="person-outline"></ion-icon></span>
+                    <ion-label>
+                      <h3 class="row-title">{{ payer.payerName }}</h3>
+                      <p class="label-muted">{{ format(payer.amountDue) }}</p>
+                    </ion-label>
+                    <app-status-pill
+                      slot="end"
+                      [label]="payer.status"
+                      [tone]="payer.status === 'paid' ? 'open' : 'muted'"
+                      [icon]="payer.status === 'paid' ? 'checkmark-circle' : null"
+                    ></app-status-pill>
+                  </ion-item>
+                }
+              </ion-list>
+            </div>
+            @if (!isAdmin()) {
+              <p class="label-muted ion-margin-top">Only admins can mark payments.</p>
+            }
           }
         </div>
       }
@@ -83,6 +100,21 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
   `,
   styles: [
     `
+      .month-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        margin: 4px 0 14px;
+      }
+      .month-nav .month-label {
+        font-weight: 700;
+        font-size: 1.05rem;
+      }
+      .nav-btn {
+        border: 1px solid var(--app-border);
+        border-radius: 50%;
+      }
       .empty-card {
         display: flex;
         align-items: center;
@@ -120,6 +152,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     IonToolbar,
     IonTitle,
     IonButtons,
+    IonButton,
     IonBackButton,
     IonContent,
     IonList,
@@ -157,7 +190,7 @@ export class PayerStatusPage {
   }
 
   get backHref(): string {
-    return `/rooms/${this.roomId}/summary`;
+    return `/rooms/${this.roomId}/summary?month=${this.monthKey}`;
   }
 
   async ionViewWillEnter(): Promise<void> {
@@ -190,6 +223,11 @@ export class PayerStatusPage {
 
   format(amount: number): string {
     return formatRoomAmount(amount, this.room()?.currency ?? 'ARS');
+  }
+
+  async shift(delta: number): Promise<void> {
+    this.monthKey = shiftMonthKey(this.monthKey, delta);
+    await this.load();
   }
 
   async addExpense(): Promise<void> {

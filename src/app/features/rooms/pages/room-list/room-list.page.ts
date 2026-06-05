@@ -81,7 +81,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
       </ion-fab>
     </ion-content>
     @if (!loading() && rooms().length > 0) {
-      <app-tab-bar [roomId]="tabRoomId()" active="home" (addExpense)="quickAdd()"></app-tab-bar>
+      <!-- <app-tab-bar [roomId]="tabRoomId()" active="home" (addExpense)="quickAdd()"></app-tab-bar> -->
     }
   `,
   styles: [
@@ -197,8 +197,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
     IonSpinner,
     IonFab,
     IonFabButton,
-    AppTabBarComponent,
-  ],
+    ],
 })
 export class RoomListPage {
   private readonly roomService = inject(RoomService);
