@@ -15,7 +15,7 @@ import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { RoomMembership } from '../../../../data/remote/supabase.mappers';
-import { AppSkeletonComponent, EmptyStateComponent } from '../../../../shared/ui';
+import { AppSkeletonComponent, EmptyStateComponent, StatusPillComponent } from '../../../../shared/ui';
 import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils';
 
 @Component({
@@ -59,12 +59,10 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
                   <span class="room-info">
                     <span class="room-name">{{ membership.room.name }}</span>
                     <span class="label-muted">{{ membership.room.currency }} · {{ currentMonth }}</span>
-                    <span
-                      class="status-pill"
-                      [class.is-paid]="membership.role === 'admin'"
-                      [class.is-muted]="membership.role !== 'admin'"
-                      >{{ membership.role }}</span
-                    >
+                    <app-status-pill
+                      [label]="membership.role"
+                      [tone]="membership.role === 'admin' ? 'paid' : 'muted'"
+                    ></app-status-pill>
                   </span>
                   <ion-icon class="chev" name="chevron-forward"></ion-icon>
                 </button>
@@ -168,7 +166,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
         font-weight: 700;
         font-size: 1.05rem;
       }
-      .room-info .status-pill {
+      .room-info app-status-pill {
         align-self: flex-start;
         text-transform: capitalize;
       }
@@ -210,6 +208,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
     IonRefresherContent,
     AppSkeletonComponent,
     EmptyStateComponent,
+    StatusPillComponent,
   ],
 })
 export class RoomListPage {

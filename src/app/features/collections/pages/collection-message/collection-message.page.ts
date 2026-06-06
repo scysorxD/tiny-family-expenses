@@ -2,17 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import {
-  IonBackButton,
   IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
   IonSpinner,
   IonTextarea,
-  IonTitle,
   IonToggle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { Category, Expense, Period, Room } from '../../../../core/models';
 import { CategoryService } from '../../../../core/services/category.service';
@@ -21,6 +16,7 @@ import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { ShareService } from '../../../../core/services/share.service';
+import { PageHeaderComponent } from '../../../../shared/components';
 import {
   CategoryBreakdownItem,
   describeError,
@@ -33,14 +29,7 @@ import {
 @Component({
   selector: 'app-collection-message',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Collection message</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Collection message" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       @if (loading()) {
         <div class="center-pad"><ion-spinner></ion-spinner></div>
@@ -124,17 +113,13 @@ import {
   ],
   imports: [
     FormsModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
     IonButton,
-    IonBackButton,
     IonContent,
     IonTextarea,
     IonToggle,
     IonIcon,
     IonSpinner,
+    PageHeaderComponent,
   ],
 })
 export class CollectionMessagePage {

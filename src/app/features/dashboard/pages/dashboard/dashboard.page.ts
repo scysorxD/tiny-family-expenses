@@ -1,17 +1,12 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  IonBackButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonItem,
   IonLabel,
   IonList,
   IonRefresher,
   IonRefresherContent,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { Period, Room } from '../../../../core/models';
 import {
@@ -23,6 +18,7 @@ import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
 import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
+import { PageHeaderComponent } from '../../../../shared/components';
 import {
   AppSkeletonComponent,
   BarDatum,
@@ -42,14 +38,7 @@ import {
 @Component({
   selector: 'app-dashboard',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Dashboard</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Dashboard" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
         <ion-refresher-content></ion-refresher-content>
@@ -118,17 +107,13 @@ import {
     </ion-content>
   `,
   imports: [
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
-    IonBackButton,
     IonContent,
     IonList,
     IonItem,
     IonLabel,
     IonRefresher,
     IonRefresherContent,
+    PageHeaderComponent,
     AppSkeletonComponent,
     BarTrendComponent,
     DonutChartComponent,
