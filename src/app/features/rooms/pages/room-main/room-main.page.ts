@@ -98,7 +98,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
             </div>
           </div>
 
-          <div class="quick-actions">
+          <!-- <div class="quick-actions">
             <button type="button" class="quick-action" (click)="go('summary')">
               <ion-icon name="pie-chart-outline"></ion-icon>Summary
             </button>
@@ -111,7 +111,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
             <button type="button" class="quick-action" (click)="openMore()">
               <ion-icon name="grid-outline"></ion-icon>More
             </button>
-          </div>
+          </div> -->
 
           <div class="section-head">
             <span class="section-title">Latest expenses</span>
