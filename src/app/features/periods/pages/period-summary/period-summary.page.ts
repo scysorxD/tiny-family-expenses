@@ -2,20 +2,16 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ModalController } from '@ionic/angular/standalone';
 import {
-  IonBackButton,
   IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
   IonItem,
   IonLabel,
   IonList,
+  IonRefresher,
+  IonRefresherContent,
   IonSegment,
   IonSegmentButton,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { Beneficiary, Category, Expense, Period, Room, RoomRole } from '../../../../core/models';
 import { BeneficiaryService } from '../../../../core/services/beneficiary.service';
@@ -23,9 +19,20 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { ExpenseService } from '../../../../core/services/expense.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
+import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
-import { AppTabBarComponent, CategoryIconComponent, StatusPillComponent, StatusTone } from '../../../../shared/ui';
+import { MonthNavComponent, PageHeaderComponent } from '../../../../shared/components';
+import {
+  AppSkeletonComponent,
+  AppTabBarComponent,
+  CategoryIconComponent,
+  DonutChartComponent,
+  DonutDatum,
+  EmptyStateComponent,
+  StatusPillComponent,
+  StatusTone,
+} from '../../../../shared/ui';
 import {
   describeError,
   formatRoomAmount,
@@ -39,31 +46,21 @@ interface Group {
   total: number;
 }
 
+const SHARED_LABEL = 'Shared';
+
 @Component({
   selector: 'app-period-summary',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Summary</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Summary" [defaultHref]="backHref"></app-page-header>
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="summary"></app-skeleton>
       } @else {
         <div class="page-pad fab-safe">
-          <div class="month-nav">
-            <ion-button fill="clear" class="nav-btn" (click)="shift(-1)">
-              <ion-icon slot="icon-only" name="chevron-back"></ion-icon>
-            </ion-button>
-            <span class="month-label">{{ label() }}</span>
-            <ion-button fill="clear" class="nav-btn" (click)="shift(1)">
-              <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
-            </ion-button>
-          </div>
+          <app-month-nav [label]="label()" (shift)="shift($event)"></app-month-nav>
 
           <div class="hero-card">
             <p class="label-muted">Total expenses</p>
@@ -106,6 +103,8 @@ interface Group {
                 <div class="bd-head"><span>By category</span><ion-icon name="pie-chart-outline"></ion-icon></div>
                 @if (byCategory().length === 0) {
                   <p class="label-muted">No expenses.</p>
+                } @else {
+                  <app-donut-chart [data]="categoryChart()" [centerLabel]="shortTotal()"></app-donut-chart>
                 }
                 @for (group of byCategoryTop(); track group.label) {
                   <div class="bd-row">
@@ -147,7 +146,13 @@ interface Group {
               }
             </div>
             @if (expenses().length === 0) {
-              <div class="app-card text-muted">No expenses this month.</div>
+              <app-empty-state
+                icon="receipt-outline"
+                title="No expenses this month"
+                message="Add an expense to start the monthly summary."
+                actionLabel="Add expense"
+                (action)="addExpense()"
+              ></app-empty-state>
             } @else {
               <div class="list-card">
                 <ion-list>
@@ -166,7 +171,13 @@ interface Group {
             }
           } @else {
             @if (expenses().length === 0) {
-              <div class="app-card text-muted">No expenses this month.</div>
+              <app-empty-state
+                icon="receipt-outline"
+                title="No expenses this month"
+                message="Add an expense to start the monthly summary."
+                actionLabel="Add expense"
+                (action)="addExpense()"
+              ></app-empty-state>
             } @else {
               <div class="list-card">
                 <ion-list>
@@ -200,21 +211,6 @@ interface Group {
   `,
   styles: [
     `
-      .month-nav {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 18px;
-        margin: 4px 0 14px;
-      }
-      .month-nav .month-label {
-        font-weight: 700;
-        font-size: 1.05rem;
-      }
-      .nav-btn {
-        border: 1px solid var(--app-border);
-        border-radius: 50%;
-      }
       .hero-pills {
         display: flex;
         gap: 8px;
@@ -235,8 +231,8 @@ interface Group {
         margin: 16px 0;
       }
       .breakdown {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
+        display: flex;
+        flex-direction: column;
         gap: 12px;
       }
       .bd-head {
@@ -277,22 +273,23 @@ interface Group {
     `,
   ],
   imports: [
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
     IonButton,
-    IonBackButton,
     IonContent,
     IonList,
     IonItem,
     IonLabel,
     IonIcon,
-    IonSpinner,
+    IonRefresher,
+    IonRefresherContent,
     IonSegment,
     IonSegmentButton,
+    PageHeaderComponent,
+    MonthNavComponent,
+    AppSkeletonComponent,
     AppTabBarComponent,
     CategoryIconComponent,
+    DonutChartComponent,
+    EmptyStateComponent,
     StatusPillComponent,
   ],
 })
@@ -306,9 +303,13 @@ export class PeriodSummaryPage {
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
+  private readonly realtime = inject(RealtimeService);
+
+  private realtimeOff?: () => void;
 
   private readonly categoryMap = signal<Map<string, string>>(new Map());
   private readonly beneficiaryMap = signal<Map<string, string>>(new Map());
+  private readonly activeBeneficiaryIds = signal<Set<string>>(new Set());
 
   readonly room = signal<Room | null>(null);
   readonly role = signal<RoomRole | null>(null);
@@ -336,15 +337,36 @@ export class PeriodSummaryPage {
 
   readonly byCategoryTop = computed(() => this.byCategory().slice(0, 3));
 
+  readonly categoryChart = computed<DonutDatum[]>(() =>
+    this.byCategory().map((group) => ({ label: group.label, value: group.total })),
+  );
+
   readonly byBeneficiary = computed<Group[]>(() => {
+    const names = this.beneficiaryMap();
+    const activeIds = this.activeBeneficiaryIds();
     const totals = new Map<string, number>();
+
     for (const expense of this.expenses()) {
-      const key =
-        expense.beneficiaryIds.length > 1
-          ? 'Both'
-          : (this.beneficiaryMap().get(expense.beneficiaryIds[0] ?? '') ?? '—');
-      totals.set(key, (totals.get(key) ?? 0) + expense.amount);
+      const ids = expense.beneficiaryIds;
+      if (ids.length === 0) {
+        continue;
+      }
+
+      // An expense covering every active beneficiary is "shared" and kept whole;
+      // any other expense is split evenly across the beneficiaries it applies to.
+      const coversAll = activeIds.size > 1 && [...activeIds].every((id) => ids.includes(id));
+      if (coversAll) {
+        totals.set(SHARED_LABEL, (totals.get(SHARED_LABEL) ?? 0) + expense.amount);
+        continue;
+      }
+
+      const share = expense.amount / ids.length;
+      for (const id of ids) {
+        const label = names.get(id) ?? '—';
+        totals.set(label, (totals.get(label) ?? 0) + share);
+      }
     }
+
     return [...totals.entries()]
       .map(([label, total]) => ({ label, total }))
       .sort((a, b) => b.total - a.total);
@@ -366,10 +388,25 @@ export class PeriodSummaryPage {
       this.monthKey.set(month);
     }
     await this.load();
+    this.realtimeOff = this.realtime.onRoomChanges(this.roomId, ['expenses', 'periods'], () =>
+      void this.load(false),
+    );
   }
 
-  private async load(): Promise<void> {
-    this.loading.set(true);
+  ionViewWillLeave(): void {
+    this.realtimeOff?.();
+    this.realtimeOff = undefined;
+  }
+
+  async handleRefresh(event: CustomEvent): Promise<void> {
+    await this.load(false);
+    (event.target as HTMLIonRefresherElement | null)?.complete();
+  }
+
+  private async load(showLoader = true): Promise<void> {
+    if (showLoader) {
+      this.loading.set(true);
+    }
     try {
       const [room, role, categories, beneficiaries, period, expenses] = await Promise.all([
         this.roomService.getRoom(this.roomId),
@@ -383,6 +420,9 @@ export class PeriodSummaryPage {
       this.role.set(role);
       this.categoryMap.set(new Map(categories.map((c: Category) => [c.id, c.name])));
       this.beneficiaryMap.set(new Map(beneficiaries.map((b: Beneficiary) => [b.id, b.name])));
+      this.activeBeneficiaryIds.set(
+        new Set(beneficiaries.filter((b: Beneficiary) => b.isActive).map((b: Beneficiary) => b.id)),
+      );
       this.period.set(period);
       this.expenses.set(expenses);
     } catch (error) {
@@ -398,6 +438,11 @@ export class PeriodSummaryPage {
 
   format(amount: number): string {
     return formatRoomAmount(amount, this.room()?.currency ?? 'ARS');
+  }
+
+  shortTotal(): string {
+    const value = this.total();
+    return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value));
   }
 
   categoryName(categoryId: string): string {

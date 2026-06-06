@@ -10,7 +10,7 @@ import {
 })
 export class LocalDatabaseService {
   private static readonly databaseName = 'tiny_family_expenses';
-  private static readonly schemaVersion = 3;
+  private static readonly schemaVersion = 4;
 
   private readonly sqlite = new SQLiteConnection(CapacitorSQLite);
   private database?: SQLiteDBConnection;
@@ -75,6 +75,11 @@ export class LocalDatabaseService {
     if (currentVersion < 3) {
       await this.applyVersion3Schema(database);
       await this.setCurrentSchemaVersion(3);
+    }
+
+    if (currentVersion < 4) {
+      await this.applyVersion4Schema(database);
+      await this.setCurrentSchemaVersion(4);
     }
   }
 
@@ -179,6 +184,41 @@ export class LocalDatabaseService {
         );
       `,
       'CREATE INDEX IF NOT EXISTS idx_local_payers_room_active ON payers(room_id, is_active);',
+    ];
+
+    for (const statement of statements) {
+      await database.execute(statement);
+    }
+  }
+
+  // Widen sync_queue.entity_type to allow reference-data writes (categories,
+  // beneficiaries, payers) to be queued offline, not just expenses. SQLite
+  // cannot alter a CHECK constraint in place, so the table is rebuilt.
+  private async applyVersion4Schema(database: SQLiteDBConnection): Promise<void> {
+    const statements = [
+      `
+        CREATE TABLE IF NOT EXISTS sync_queue_v4 (
+          local_id TEXT PRIMARY KEY,
+          entity_type TEXT NOT NULL CHECK (entity_type IN ('expense', 'category', 'beneficiary', 'payer')),
+          operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete')),
+          payload TEXT NOT NULL,
+          attempt_count INTEGER NOT NULL DEFAULT 0,
+          last_attempt_at TEXT,
+          status TEXT NOT NULL CHECK (status IN ('pending_sync', 'syncing', 'synced', 'sync_failed', 'conflict')),
+          error_message TEXT,
+          created_at TEXT NOT NULL
+        );
+      `,
+      `
+        INSERT INTO sync_queue_v4
+          (local_id, entity_type, operation, payload, attempt_count, last_attempt_at, status, error_message, created_at)
+        SELECT
+          local_id, entity_type, operation, payload, attempt_count, last_attempt_at, status, error_message, created_at
+        FROM sync_queue;
+      `,
+      'DROP TABLE sync_queue;',
+      'ALTER TABLE sync_queue_v4 RENAME TO sync_queue;',
+      'CREATE INDEX IF NOT EXISTS idx_local_sync_queue_status_created ON sync_queue(status, created_at);',
     ];
 
     for (const statement of statements) {

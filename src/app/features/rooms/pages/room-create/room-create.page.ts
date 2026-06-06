@@ -1,35 +1,21 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import {
-  IonBackButton,
-  IonButton,
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonInput,
-  IonSelect,
-  IonSelectOption,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
-} from '@ionic/angular/standalone';
+import { IonContent, IonInput } from '@ionic/angular/standalone';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
 import { RoomService } from '../../../../core/services/room.service';
+import {
+  CurrencySelectComponent,
+  PageHeaderComponent,
+  SubmitButtonComponent,
+} from '../../../../shared/components';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-room-create',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button defaultHref="/rooms"></ion-back-button>
-        </ion-buttons>
-        <ion-title>New room</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="New room" defaultHref="/rooms"></app-page-header>
     <ion-content>
       <div class="page-pad">
         <p class="label-muted intro">Create a room to track shared expenses with others.</p>
@@ -41,21 +27,13 @@ import { describeError } from '../../../../shared/utils';
             placeholder="Parents expenses"
             formControlName="name"
           ></ion-input>
-          <ion-select fill="outline" label="Currency" labelPlacement="stacked" formControlName="currency">
-            <ion-select-option value="ARS">ARS</ion-select-option>
-            <ion-select-option value="USD">USD</ion-select-option>
-            <ion-select-option value="EUR">EUR</ion-select-option>
-            <ion-select-option value="BRL">BRL</ion-select-option>
-            <ion-select-option value="CLP">CLP</ion-select-option>
-            <ion-select-option value="MXN">MXN</ion-select-option>
-          </ion-select>
-          <ion-button expand="block" type="submit" [disabled]="loading() || form.invalid">
-            @if (loading()) {
-              <ion-spinner name="dots"></ion-spinner>
-            } @else {
-              Create room
-            }
-          </ion-button>
+          <app-currency-select formControlName="currency"></app-currency-select>
+          <app-submit-button
+            type="submit"
+            label="Create room"
+            [loading]="loading()"
+            [disabled]="form.invalid"
+          ></app-submit-button>
         </form>
       </div>
     </ion-content>
@@ -70,24 +48,15 @@ import { describeError } from '../../../../shared/utils';
         flex-direction: column;
         gap: 16px;
       }
-      .form-stack ion-button {
-        margin-top: 6px;
-      }
     `,
   ],
   imports: [
     ReactiveFormsModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
-    IonBackButton,
     IonContent,
     IonInput,
-    IonSelect,
-    IonSelectOption,
-    IonButton,
-    IonSpinner,
+    PageHeaderComponent,
+    CurrencySelectComponent,
+    SubmitButtonComponent,
   ],
 })
 export class RoomCreatePage {

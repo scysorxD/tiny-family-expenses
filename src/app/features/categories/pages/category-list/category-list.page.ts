@@ -1,92 +1,73 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import {
-  ActionSheetController,
-  IonBackButton,
-  IonBadge,
   IonButton,
   IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { Category } from '../../../../core/models';
 import { CategoryService } from '../../../../core/services/category.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
-import { CategoryIconComponent } from '../../../../shared/ui';
+import {
+  ManagedListComponent,
+  ManagedListItem,
+  PageHeaderComponent,
+} from '../../../../shared/components';
+import { AppSkeletonComponent, EmptyStateComponent } from '../../../../shared/ui';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-category-list',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Categories</ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="create()">
-            <ion-icon slot="icon-only" name="add"></ion-icon>
-          </ion-button>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Categories" [defaultHref]="backHref">
+      <ion-buttons slot="end" end>
+        <ion-button (click)="create()">
+          <ion-icon slot="icon-only" name="add"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </app-page-header>
     <ion-content>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="list"></app-skeleton>
       } @else {
         <div class="page-pad">
           @if (categories().length === 0) {
-            <div class="app-card text-muted">No categories yet. Tap + to add one.</div>
+            <app-empty-state
+              icon="pricetag-outline"
+              title="No categories yet"
+              message="Add categories like Food, Transport or Medicine to organize expenses."
+              actionLabel="Add category"
+              (action)="create()"
+            ></app-empty-state>
           } @else {
-            <div class="list-card">
-              <ion-list>
-                @for (category of categories(); track category.id) {
-                  <ion-item button detail="false" (click)="openActions(category)">
-                    <app-category-icon slot="start" [name]="category.name"></app-category-icon>
-                    <ion-label [class.inactive]="!category.isActive">{{ category.name }}</ion-label>
-                    @if (!category.isActive) {
-                      <ion-badge slot="end" color="medium">inactive</ion-badge>
-                    }
-                    <ion-icon slot="end" name="ellipsis-vertical" class="row-more"></ion-icon>
-                  </ion-item>
-                }
-              </ion-list>
-            </div>
+            <app-managed-list
+              [items]="categories()"
+              iconMode="category"
+              (rename)="rename($event)"
+              (toggleActive)="toggleActive($event)"
+              (delete)="remove($event)"
+            ></app-managed-list>
           }
         </div>
       }
     </ion-content>
   `,
   imports: [
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonButtons,
     IonButton,
-    IonBackButton,
     IonContent,
-    IonList,
-    IonItem,
-    IonLabel,
-    IonBadge,
     IonIcon,
-    IonSpinner,
-    CategoryIconComponent,
+    PageHeaderComponent,
+    ManagedListComponent,
+    AppSkeletonComponent,
+    EmptyStateComponent,
   ],
 })
 export class CategoryListPage {
   private readonly route = inject(ActivatedRoute);
   private readonly categoryService = inject(CategoryService);
   private readonly feedback = inject(FeedbackService);
-  private readonly actionSheet = inject(ActionSheetController);
 
   readonly categories = signal<Category[]>([]);
   readonly loading = signal(true);
@@ -114,23 +95,6 @@ export class CategoryListPage {
     }
   }
 
-  async openActions(category: Category): Promise<void> {
-    const sheet = await this.actionSheet.create({
-      header: category.name,
-      buttons: [
-        { text: 'Rename', icon: 'create-outline', handler: () => void this.rename(category) },
-        {
-          text: category.isActive ? 'Deactivate' : 'Activate',
-          icon: category.isActive ? 'close-outline' : 'checkmark-circle-outline',
-          handler: () => void this.toggleActive(category),
-        },
-        { text: 'Delete', role: 'destructive', icon: 'trash-outline', handler: () => void this.remove(category) },
-        { text: 'Cancel', role: 'cancel' },
-      ],
-    });
-    await sheet.present();
-  }
-
   async create(): Promise<void> {
     const name = await this.feedback.prompt('New category', '', 'e.g. Medicine');
     if (!name) {
@@ -144,7 +108,7 @@ export class CategoryListPage {
     }
   }
 
-  async rename(category: Category): Promise<void> {
+  async rename(category: ManagedListItem): Promise<void> {
     const name = await this.feedback.prompt('Rename category', category.name);
     if (!name || name === category.name) {
       return;
@@ -157,7 +121,7 @@ export class CategoryListPage {
     }
   }
 
-  async toggleActive(category: Category): Promise<void> {
+  async toggleActive(category: ManagedListItem): Promise<void> {
     try {
       await this.categoryService.setActive(category.id, !category.isActive);
       await this.load();
@@ -166,7 +130,7 @@ export class CategoryListPage {
     }
   }
 
-  async remove(category: Category): Promise<void> {
+  async remove(category: ManagedListItem): Promise<void> {
     const confirmed = await this.feedback.confirm(
       'Delete category',
       `Delete "${category.name}"? Categories with expenses cannot be deleted.`,

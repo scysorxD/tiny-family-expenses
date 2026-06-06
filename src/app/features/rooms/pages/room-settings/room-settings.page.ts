@@ -2,38 +2,29 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  IonBackButton,
   IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
   IonInput,
   IonItem,
   IonLabel,
   IonList,
-  IonSelect,
-  IonSelectOption,
   IonSpinner,
   IonToggle,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { RoomService } from '../../../../core/services/room.service';
+import {
+  CurrencySelectComponent,
+  PageHeaderComponent,
+  SubmitButtonComponent,
+} from '../../../../shared/components';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-room-settings',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Room settings</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Room settings" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       @if (loading()) {
         <div class="center-pad"><ion-spinner></ion-spinner></div>
@@ -46,24 +37,15 @@ import { describeError } from '../../../../shared/utils';
           <h2 class="section-title">General</h2>
           <div class="form-stack">
             <ion-input fill="outline" label="Room name" labelPlacement="stacked" [(ngModel)]="name"></ion-input>
-            <ion-select fill="outline" label="Currency" labelPlacement="stacked" [(ngModel)]="currency">
-              <ion-select-option value="ARS">ARS</ion-select-option>
-              <ion-select-option value="USD">USD</ion-select-option>
-              <ion-select-option value="EUR">EUR</ion-select-option>
-              <ion-select-option value="BRL">BRL</ion-select-option>
-              <ion-select-option value="CLP">CLP</ion-select-option>
-              <ion-select-option value="MXN">MXN</ion-select-option>
-            </ion-select>
+            <app-currency-select [(ngModel)]="currency"></app-currency-select>
             <div class="app-card toggle-card">
               <ion-toggle [(ngModel)]="includeDetail">Include detail in collection message</ion-toggle>
             </div>
-            <ion-button expand="block" (click)="save()" [disabled]="saving()">
-              @if (saving()) {
-                <ion-spinner name="dots"></ion-spinner>
-              } @else {
-                Save settings
-              }
-            </ion-button>
+            <app-submit-button
+              label="Save settings"
+              [loading]="saving()"
+              (action)="save()"
+            ></app-submit-button>
           </div>
 
           <h2 class="section-title">People</h2>
@@ -113,22 +95,18 @@ import { describeError } from '../../../../shared/utils';
   ],
   imports: [
     FormsModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
     IonButton,
-    IonBackButton,
     IonContent,
     IonList,
     IonItem,
     IonLabel,
     IonInput,
-    IonSelect,
-    IonSelectOption,
     IonToggle,
     IonIcon,
     IonSpinner,
+    PageHeaderComponent,
+    CurrencySelectComponent,
+    SubmitButtonComponent,
   ],
 })
 export class RoomSettingsPage {

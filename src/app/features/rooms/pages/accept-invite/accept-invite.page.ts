@@ -3,25 +3,19 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonButton,
   IonContent,
-  IonHeader,
   IonIcon,
   IonSpinner,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { InvitationPreview, InvitationService } from '../../../../core/services/invitation.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
+import { PageHeaderComponent } from '../../../../shared/components';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-accept-invite',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Join room</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Join room"></app-page-header>
     <ion-content>
       <div class="page-pad">
         @if (loading()) {
@@ -88,7 +82,7 @@ import { describeError } from '../../../../shared/utils';
       }
     `,
   ],
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonIcon, IonSpinner],
+  imports: [IonContent, IonButton, IonIcon, IonSpinner, PageHeaderComponent],
 })
 export class AcceptInvitePage implements OnInit {
   private readonly route = inject(ActivatedRoute);

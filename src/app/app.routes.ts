@@ -27,6 +27,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./features/auth/pages/reset-password/reset-password.page').then(
+        (m) => m.ResetPasswordPage,
+      ),
+  },
+  {
     path: 'invite',
     canActivate: [authGuard],
     loadComponent: () =>
@@ -119,6 +126,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./features/dashboard/pages/dashboard/dashboard.page').then((m) => m.DashboardPage),
+  },
+  {
+    path: 'rooms/:roomId/sync',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/sync/pages/sync-status/sync-status.page').then((m) => m.SyncStatusPage),
   },
   {
     path: '**',

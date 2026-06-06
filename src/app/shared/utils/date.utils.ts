@@ -64,3 +64,16 @@ export function monthLabel(monthKey: string, locale = 'en-US'): string {
     new Date(year, monthIndex, 1),
   );
 }
+
+export function shortMonthLabel(monthKey: string, locale = 'en-US'): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
+
+  if (!match) {
+    throw new Error(`Invalid month key: ${monthKey}`);
+  }
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+
+  return new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(year, monthIndex, 1));
+}

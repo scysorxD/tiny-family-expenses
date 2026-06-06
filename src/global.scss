@@ -228,13 +228,13 @@ ion-button {
   color: var(--app-text-muted);
 }
 
-/* Quick action grid (room main) */
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--app-space-3);
-  margin: var(--app-space-4) 0;
-}
+// /* Quick action grid (room main) */
+// .quick-actions {
+//   display: grid;
+//   grid-template-columns: repeat(4, 1fr);
+//   gap: var(--app-space-3);
+//   margin: var(--app-space-4) 0;
+// }
 
 .quick-action {
   display: flex;

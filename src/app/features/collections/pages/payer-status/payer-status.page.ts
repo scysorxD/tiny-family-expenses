@@ -2,25 +2,27 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ModalController } from '@ionic/angular/standalone';
 import {
-  IonBackButton,
-  IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
   IonItem,
   IonLabel,
   IonList,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
+  IonRefresher,
+  IonRefresherContent,
 } from '@ionic/angular/standalone';
 import { Period, Room, RoomRole } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PayerStatusView, PeriodService } from '../../../../core/services/period.service';
+import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
-import { AppTabBarComponent, StatusPillComponent } from '../../../../shared/ui';
+import { MonthNavComponent, PageHeaderComponent } from '../../../../shared/components';
+import {
+  AppSkeletonComponent,
+  AppTabBarComponent,
+  EmptyStateComponent,
+  StatusPillComponent,
+} from '../../../../shared/ui';
 import {
   describeError,
   formatRoomAmount,
@@ -32,34 +34,23 @@ import {
 @Component({
   selector: 'app-payer-status',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Collections</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Collections" [defaultHref]="backHref"></app-page-header>
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
       @if (loading()) {
-        <div class="center-pad"><ion-spinner></ion-spinner></div>
+        <app-skeleton variant="summary"></app-skeleton>
       } @else {
         <div class="page-pad fab-safe">
-          <div class="month-nav">
-            <ion-button fill="clear" class="nav-btn" (click)="shift(-1)">
-              <ion-icon slot="icon-only" name="chevron-back"></ion-icon>
-            </ion-button>
-            <span class="month-label">{{ label }}</span>
-            <ion-button fill="clear" class="nav-btn" (click)="shift(1)">
-              <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
-            </ion-button>
-          </div>
+          <app-month-nav [label]="label" (shift)="shift($event)"></app-month-nav>
 
           @if (!period() || period()?.status === 'open') {
-            <div class="app-card empty-card">
-              <ion-icon name="lock-closed-outline"></ion-icon>
-              <span>Close the month to track who has paid.</span>
-            </div>
+            <app-empty-state
+              icon="lock-closed-outline"
+              title="Month still open"
+              message="Close the month from the Summary screen to track who has paid."
+            ></app-empty-state>
           } @else {
             <div class="hero-card">
               <p class="label-muted">{{ label }}</p>
@@ -100,21 +91,6 @@ import {
   `,
   styles: [
     `
-      .month-nav {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 18px;
-        margin: 4px 0 14px;
-      }
-      .month-nav .month-label {
-        font-weight: 700;
-        font-size: 1.05rem;
-      }
-      .nav-btn {
-        border: 1px solid var(--app-border);
-        border-radius: 50%;
-      }
       .empty-card {
         display: flex;
         align-items: center;
@@ -148,19 +124,18 @@ import {
     `,
   ],
   imports: [
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
-    IonButton,
-    IonBackButton,
     IonContent,
     IonList,
     IonItem,
     IonLabel,
     IonIcon,
-    IonSpinner,
+    IonRefresher,
+    IonRefresherContent,
+    PageHeaderComponent,
+    MonthNavComponent,
+    AppSkeletonComponent,
     AppTabBarComponent,
+    EmptyStateComponent,
     StatusPillComponent,
   ],
 })
@@ -170,6 +145,9 @@ export class PayerStatusPage {
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
+  private readonly realtime = inject(RealtimeService);
+
+  private realtimeOff?: () => void;
 
   readonly room = signal<Room | null>(null);
   readonly role = signal<RoomRole | null>(null);
@@ -196,10 +174,25 @@ export class PayerStatusPage {
   async ionViewWillEnter(): Promise<void> {
     this.monthKey = this.route.snapshot.queryParamMap.get('month') ?? toMonthKey(new Date());
     await this.load();
+    this.realtimeOff = this.realtime.onRoomChanges(this.roomId, ['periods'], () =>
+      void this.load(false),
+    );
   }
 
-  private async load(): Promise<void> {
-    this.loading.set(true);
+  ionViewWillLeave(): void {
+    this.realtimeOff?.();
+    this.realtimeOff = undefined;
+  }
+
+  async handleRefresh(event: CustomEvent): Promise<void> {
+    await this.load(false);
+    (event.target as HTMLIonRefresherElement | null)?.complete();
+  }
+
+  private async load(showLoader = true): Promise<void> {
+    if (showLoader) {
+      this.loading.set(true);
+    }
     try {
       const [room, role, period] = await Promise.all([
         this.roomService.getRoom(this.roomId),

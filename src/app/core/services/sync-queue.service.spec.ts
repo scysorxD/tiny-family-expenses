@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { Expense } from '../models';
+import { Capacitor } from '@capacitor/core';
+import { Expense, SyncQueueItem } from '../models';
 import { LocalStore } from '../../data/local/local-store.service';
 import { ConnectivityService } from './connectivity.service';
 import { FeedbackService } from './feedback.service';
@@ -31,14 +32,26 @@ describe('SyncQueueService', () => {
     store = jasmine.createSpyObj<LocalStore>('LocalStore', [
       'enqueue',
       'listQueue',
+      'listQueueAll',
       'pendingCount',
+      'conflictCount',
       'setQueueStatus',
+      'resetQueueItem',
       'removeQueueItem',
       'setExpenseSyncStatus',
+      'deleteExpenseLocal',
+      'setCategorySyncStatus',
     ]);
     store.enqueue.and.resolveTo();
     store.listQueue.and.resolveTo([]);
+    store.listQueueAll.and.resolveTo([]);
     store.pendingCount.and.resolveTo(0);
+    store.conflictCount.and.resolveTo(0);
+    store.resetQueueItem.and.resolveTo();
+    store.removeQueueItem.and.resolveTo();
+    store.setExpenseSyncStatus.and.resolveTo();
+    store.deleteExpenseLocal.and.resolveTo();
+    store.setCategorySyncStatus.and.resolveTo();
 
     client = { from: jasmine.createSpy('from') };
 
@@ -94,5 +107,82 @@ describe('SyncQueueService', () => {
     expect(store.listQueue).not.toHaveBeenCalled();
     expect(client.from).not.toHaveBeenCalled();
     expect(service.syncing()).toBeFalse();
+  });
+
+  it('discards a pending create by deleting the local expense', async () => {
+    const service = TestBed.inject(SyncQueueService);
+    const item: SyncQueueItem = {
+      localId: 'exp-1',
+      entityType: 'expense',
+      operation: 'create',
+      payload: { id: 'exp-1' },
+      attemptCount: 0,
+      status: 'conflict',
+    };
+
+    await service.discard(item);
+
+    expect(store.deleteExpenseLocal).toHaveBeenCalledOnceWith('exp-1');
+    expect(store.setExpenseSyncStatus).not.toHaveBeenCalled();
+    expect(store.removeQueueItem).toHaveBeenCalledOnceWith('exp-1');
+  });
+
+  it('discards a pending update by marking the local expense synced', async () => {
+    const service = TestBed.inject(SyncQueueService);
+    const item: SyncQueueItem = {
+      localId: 'exp-1:update',
+      entityType: 'expense',
+      operation: 'update',
+      payload: { id: 'exp-1' },
+      attemptCount: 0,
+      status: 'conflict',
+    };
+
+    await service.discard(item);
+
+    expect(store.deleteExpenseLocal).not.toHaveBeenCalled();
+    expect(store.setExpenseSyncStatus).toHaveBeenCalledOnceWith('exp-1', 'synced');
+    expect(store.removeQueueItem).toHaveBeenCalledOnceWith('exp-1:update');
+  });
+
+  it('resets the queue row and the expense status when retrying', async () => {
+    const service = TestBed.inject(SyncQueueService);
+    const item: SyncQueueItem = {
+      localId: 'exp-1',
+      entityType: 'expense',
+      operation: 'create',
+      payload: { id: 'exp-1' },
+      attemptCount: 3,
+      status: 'sync_failed',
+    };
+
+    await service.retry(item);
+
+    expect(store.resetQueueItem).toHaveBeenCalledOnceWith('exp-1');
+    expect(store.setExpenseSyncStatus).toHaveBeenCalledOnceWith('exp-1', 'pending_sync');
+  });
+
+  it('routes a queued category create to the categories table on replay', async () => {
+    spyOn(Capacitor, 'isNativePlatform').and.returnValue(true);
+    const upsert = jasmine.createSpy('upsert').and.resolveTo({ error: null });
+    client.from.and.returnValue({ upsert });
+    store.listQueue.and.resolveTo([
+      {
+        localId: 'category:cat-9:create',
+        entityType: 'category',
+        operation: 'create',
+        payload: { id: 'cat-9', roomId: 'room-1', name: 'Food', createdBy: 'user-1', createdAt: 'now' },
+        attemptCount: 0,
+        status: 'pending_sync',
+      },
+    ]);
+
+    const service = TestBed.inject(SyncQueueService);
+    await service.process('test');
+
+    expect(client.from).toHaveBeenCalledWith('categories');
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(store.setCategorySyncStatus).toHaveBeenCalledOnceWith('cat-9', 'synced');
+    expect(store.removeQueueItem).toHaveBeenCalledOnceWith('category:cat-9:create');
   });
 });

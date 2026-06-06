@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
-import { Expense } from '../models';
+import { Expense, SyncEntityType, SyncQueueItem } from '../models';
 import { LocalStore } from '../../data/local/local-store.service';
 import { MAX_SYNC_ATTEMPTS, classifySyncError, nowIso } from '../../shared/utils';
 import { ConnectivityService } from './connectivity.service';
@@ -33,6 +33,41 @@ interface ExpenseDeletePayload {
   id: string;
   deletedBy?: string;
   deletedAt: string;
+}
+
+interface CategoryCreatePayload {
+  id: string;
+  roomId: string;
+  name: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+interface NamedCreatePayload {
+  id: string;
+  roomId: string;
+  name: string;
+}
+
+interface NamedUpdatePayload {
+  id: string;
+  name?: string;
+  isActive?: boolean;
+}
+
+interface IdPayload {
+  id: string;
+}
+
+function buildNamedPatch(payload: NamedUpdatePayload): Record<string, unknown> {
+  const patch: Record<string, unknown> = { updated_at: nowIso() };
+  if (payload.name !== undefined) {
+    patch['name'] = payload.name;
+  }
+  if (payload.isActive !== undefined) {
+    patch['is_active'] = payload.isActive;
+  }
+  return patch;
 }
 
 @Injectable({
@@ -80,9 +115,41 @@ export class SyncQueueService {
     }
     try {
       this._pending.set(await this.store.pendingCount());
+      this._conflicts.set(await this.store.conflictCount());
     } catch {
-      // Local store unavailable; leave the current count untouched.
+      // Local store unavailable; leave the current counts untouched.
     }
+  }
+
+  listItems(): Promise<SyncQueueItem[]> {
+    return this.store.listQueueAll();
+  }
+
+  async retry(item: SyncQueueItem): Promise<void> {
+    await this.store.resetQueueItem(item.localId);
+    if (item.entityType === 'expense') {
+      const id = (item.payload as { id?: string }).id;
+      if (id) {
+        await this.store.setExpenseSyncStatus(id, 'pending_sync');
+      }
+    }
+    await this.refreshPending();
+    await this.process('manual');
+  }
+
+  async discard(item: SyncQueueItem): Promise<void> {
+    if (item.entityType === 'expense') {
+      const id = (item.payload as { id?: string }).id;
+      if (id) {
+        if (item.operation === 'create') {
+          await this.store.deleteExpenseLocal(id);
+        } else {
+          await this.store.setExpenseSyncStatus(id, 'synced');
+        }
+      }
+    }
+    await this.store.removeQueueItem(item.localId);
+    await this.refreshPending();
   }
 
   async process(_reason: string = 'manual'): Promise<void> {
@@ -94,7 +161,6 @@ export class SyncQueueService {
     }
 
     this._syncing.set(true);
-    let conflictCount = 0;
 
     try {
       const queue = await this.store.listQueue();
@@ -106,7 +172,6 @@ export class SyncQueueService {
         } catch (error) {
           const resolution = classifySyncError(error);
           if (resolution === 'conflict') {
-            conflictCount += 1;
             await this.markConflict(item.localId, item.payload, error);
           } else {
             const next =
@@ -118,7 +183,6 @@ export class SyncQueueService {
         }
       }
     } finally {
-      this._conflicts.set(conflictCount);
       await this.refreshPending();
       this._syncing.set(false);
     }
@@ -129,16 +193,88 @@ export class SyncQueueService {
     operation: string,
     payload: unknown,
   ): Promise<void> {
-    if (entityType !== 'expense') {
-      return;
+    switch (entityType) {
+      case 'expense':
+        await this.replayExpense(operation, payload);
+        return;
+      case 'category':
+        await this.replayCategory(operation, payload);
+        return;
+      case 'beneficiary':
+        await this.replayNamed('beneficiaries', operation, payload);
+        return;
+      case 'payer':
+        await this.replayNamed('payers', operation, payload);
+        return;
+      default:
+        return;
     }
+  }
 
+  private async replayExpense(operation: string, payload: unknown): Promise<void> {
     if (operation === 'create') {
       await this.replayCreate(payload as ExpenseCreatePayload);
     } else if (operation === 'update') {
       await this.replayUpdate(payload as ExpenseUpdatePayload);
     } else if (operation === 'delete') {
       await this.replayDelete(payload as ExpenseDeletePayload);
+    }
+  }
+
+  private async replayCategory(operation: string, payload: unknown): Promise<void> {
+    if (operation === 'create') {
+      const p = payload as CategoryCreatePayload;
+      const { error } = await this.client.from('categories').upsert(
+        { id: p.id, room_id: p.roomId, name: p.name, created_by: p.createdBy, created_at: p.createdAt },
+        { onConflict: 'id' },
+      );
+      if (error) {
+        throw error;
+      }
+    } else if (operation === 'update') {
+      const p = payload as NamedUpdatePayload;
+      const { error } = await this.client.from('categories').update(buildNamedPatch(p)).eq('id', p.id);
+      if (error) {
+        throw error;
+      }
+    } else if (operation === 'delete') {
+      const { error } = await this.client
+        .from('categories')
+        .delete()
+        .eq('id', (payload as IdPayload).id);
+      if (error) {
+        throw error;
+      }
+    }
+  }
+
+  private async replayNamed(
+    table: 'beneficiaries' | 'payers',
+    operation: string,
+    payload: unknown,
+  ): Promise<void> {
+    if (operation === 'create') {
+      const p = payload as NamedCreatePayload;
+      const { error } = await this.client
+        .from(table)
+        .upsert({ id: p.id, room_id: p.roomId, name: p.name }, { onConflict: 'id' });
+      if (error) {
+        throw error;
+      }
+    } else if (operation === 'update') {
+      const p = payload as NamedUpdatePayload;
+      const { error } = await this.client.from(table).update(buildNamedPatch(p)).eq('id', p.id);
+      if (error) {
+        throw error;
+      }
+    } else if (operation === 'delete') {
+      const { error } = await this.client
+        .from(table)
+        .delete()
+        .eq('id', (payload as IdPayload).id);
+      if (error) {
+        throw error;
+      }
     }
   }
 
@@ -225,6 +361,9 @@ export class SyncQueueService {
     if (entityType === 'expense') {
       const id = (payload as { id: string }).id;
       await this.store.setExpenseSyncStatus(id, 'synced');
+    } else if (entityType === 'category' && operation !== 'delete') {
+      const id = (payload as { id: string }).id;
+      await this.store.setCategorySyncStatus(id, 'synced');
     }
     await this.store.removeQueueItem(localId);
   }
@@ -291,6 +430,23 @@ export class SyncQueueService {
       localId: `${id}:delete`,
       entityType: 'expense',
       operation: 'delete',
+      payload,
+      attemptCount: 0,
+      status: 'pending_sync',
+    });
+    await this.refreshPending();
+  }
+
+  async enqueueWrite(
+    entityType: SyncEntityType,
+    operation: 'create' | 'update' | 'delete',
+    localId: string,
+    payload: unknown,
+  ): Promise<void> {
+    await this.store.enqueue({
+      localId,
+      entityType,
+      operation,
       payload,
       attemptCount: 0,
       status: 'pending_sync',

@@ -2,11 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import {
-  IonBackButton,
   IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
   IonInput,
   IonItem,
@@ -15,27 +12,20 @@ import {
   IonSegment,
   IonSegmentButton,
   IonSpinner,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { RoomRole } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { InvitationService } from '../../../../core/services/invitation.service';
 import { RoomMember, RoomService } from '../../../../core/services/room.service';
 import { ShareService } from '../../../../core/services/share.service';
+import { PageHeaderComponent, SubmitButtonComponent } from '../../../../shared/components';
+import { StatusPillComponent } from '../../../../shared/ui';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-room-members',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Members</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Members" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       @if (loading()) {
         <div class="center-pad"><ion-spinner></ion-spinner></div>
@@ -54,13 +44,11 @@ import { describeError } from '../../../../shared/utils';
               <ion-segment-button value="guest"><ion-label>Guest</ion-label></ion-segment-button>
               <ion-segment-button value="admin"><ion-label>Admin</ion-label></ion-segment-button>
             </ion-segment>
-            <ion-button expand="block" (click)="generate()" [disabled]="generating()">
-              @if (generating()) {
-                <ion-spinner name="dots"></ion-spinner>
-              } @else {
-                Generate invite link
-              }
-            </ion-button>
+            <app-submit-button
+              label="Generate invite link"
+              [loading]="generating()"
+              (action)="generate()"
+            ></app-submit-button>
           </div>
 
           @if (link()) {
@@ -88,13 +76,12 @@ import { describeError } from '../../../../shared/utils';
                     <h3 class="row-title">{{ member.displayName }}</h3>
                     <p class="label-muted">{{ member.email }}</p>
                   </ion-label>
-                  <span
+                  <app-status-pill
                     slot="end"
-                    class="status-pill member-role"
-                    [class.is-paid]="member.role === 'admin'"
-                    [class.is-muted]="member.role !== 'admin'"
-                    >{{ member.role }}</span
-                  >
+                    class="member-role"
+                    [label]="member.role"
+                    [tone]="member.role === 'admin' ? 'paid' : 'muted'"
+                  ></app-status-pill>
                   <ion-button fill="clear" color="danger" slot="end" (click)="remove(member)">
                     <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
                   </ion-button>
@@ -134,12 +121,7 @@ import { describeError } from '../../../../shared/utils';
   ],
   imports: [
     FormsModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
     IonButton,
-    IonBackButton,
     IonContent,
     IonList,
     IonItem,
@@ -149,6 +131,9 @@ import { describeError } from '../../../../shared/utils';
     IonSegmentButton,
     IonIcon,
     IonSpinner,
+    PageHeaderComponent,
+    SubmitButtonComponent,
+    StatusPillComponent,
   ],
 })
 export class RoomMembersPage {
