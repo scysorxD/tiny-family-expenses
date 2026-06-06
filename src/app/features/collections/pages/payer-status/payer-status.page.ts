@@ -2,19 +2,13 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ModalController } from '@ionic/angular/standalone';
 import {
-  IonBackButton,
-  IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
   IonItem,
   IonLabel,
   IonList,
   IonRefresher,
   IonRefresherContent,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { Period, Room, RoomRole } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
@@ -22,6 +16,7 @@ import { PayerStatusView, PeriodService } from '../../../../core/services/period
 import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
+import { MonthNavComponent, PageHeaderComponent } from '../../../../shared/components';
 import {
   AppSkeletonComponent,
   AppTabBarComponent,
@@ -39,14 +34,7 @@ import {
 @Component({
   selector: 'app-payer-status',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button [defaultHref]="backHref"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Collections</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Collections" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
         <ion-refresher-content></ion-refresher-content>
@@ -55,15 +43,7 @@ import {
         <app-skeleton variant="summary"></app-skeleton>
       } @else {
         <div class="page-pad fab-safe">
-          <div class="month-nav">
-            <ion-button fill="clear" class="nav-btn" (click)="shift(-1)">
-              <ion-icon slot="icon-only" name="chevron-back"></ion-icon>
-            </ion-button>
-            <span class="month-label">{{ label }}</span>
-            <ion-button fill="clear" class="nav-btn" (click)="shift(1)">
-              <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
-            </ion-button>
-          </div>
+          <app-month-nav [label]="label" (shift)="shift($event)"></app-month-nav>
 
           @if (!period() || period()?.status === 'open') {
             <app-empty-state
@@ -111,21 +91,6 @@ import {
   `,
   styles: [
     `
-      .month-nav {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 18px;
-        margin: 4px 0 14px;
-      }
-      .month-nav .month-label {
-        font-weight: 700;
-        font-size: 1.05rem;
-      }
-      .nav-btn {
-        border: 1px solid var(--app-border);
-        border-radius: 50%;
-      }
       .empty-card {
         display: flex;
         align-items: center;
@@ -159,12 +124,6 @@ import {
     `,
   ],
   imports: [
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
-    IonButton,
-    IonBackButton,
     IonContent,
     IonList,
     IonItem,
@@ -172,6 +131,8 @@ import {
     IonIcon,
     IonRefresher,
     IonRefresherContent,
+    PageHeaderComponent,
+    MonthNavComponent,
     AppSkeletonComponent,
     AppTabBarComponent,
     EmptyStateComponent,

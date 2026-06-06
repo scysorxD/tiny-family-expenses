@@ -415,8 +415,15 @@ export class AddExpenseModalComponent implements OnInit {
       await this.feedback.error('Enter an amount greater than zero.');
       return false;
     }
-    if (this.selectedBeneficiaryIds().length === 0) {
-      await this.feedback.error('Select who the expense applies to.');
+
+    // Default to all active beneficiaries when none are explicitly selected.
+    const beneficiaryIds =
+      this.selectedBeneficiaryIds().length > 0
+        ? this.selectedBeneficiaryIds()
+        : this.beneficiaries().map((ben) => ben.id);
+
+    if (beneficiaryIds.length === 0) {
+      await this.feedback.error('This room has no active beneficiaries. Add one in settings.');
       return false;
     }
 
@@ -438,7 +445,7 @@ export class AddExpenseModalComponent implements OnInit {
           amount,
           description: this.description,
           expenseDate: this.expenseDate,
-          beneficiaryIds: this.selectedBeneficiaryIds(),
+          beneficiaryIds,
         });
       } else {
         await this.expenseService.create({
@@ -447,7 +454,7 @@ export class AddExpenseModalComponent implements OnInit {
           amount,
           description: this.description,
           expenseDate: this.expenseDate,
-          beneficiaryIds: this.selectedBeneficiaryIds(),
+          beneficiaryIds,
         });
       }
 

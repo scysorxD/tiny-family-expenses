@@ -1,4 +1,4 @@
-import { Component, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   ActionSheetButton,
@@ -6,21 +6,15 @@ import {
   ModalController,
 } from '@ionic/angular/standalone';
 import {
-  IonBackButton,
   IonButton,
   IonButtons,
   IonContent,
-  IonDatetime,
-  IonHeader,
   IonIcon,
   IonItem,
   IonLabel,
   IonList,
-  IonPopover,
   IonRefresher,
   IonRefresherContent,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { Beneficiary, Category, Expense, PeriodStatus, Room, RoomRole } from '../../../../core/models';
 import { BeneficiaryService } from '../../../../core/services/beneficiary.service';
@@ -33,6 +27,7 @@ import { RealtimeService } from '../../../../core/services/realtime.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { SyncQueueService } from '../../../../core/services/sync-queue.service';
 import { AddExpenseModalComponent } from '../../../expenses/components/add-expense-modal/add-expense-modal.component';
+import { PageHeaderComponent } from '../../../../shared/components';
 import {
   AppSkeletonComponent,
   AppTabBarComponent,
@@ -46,29 +41,23 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
 @Component({
   selector: 'app-room-main',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button defaultHref="/rooms"></ion-back-button>
-        </ion-buttons>
-        <ion-title>{{ room()?.name ?? 'Room' }}</ion-title>
-        <ion-buttons slot="end">
-          @if (sync.syncing() || sync.pending() > 0) {
-            <ion-button (click)="syncNow()">
-              <ion-icon
-                slot="icon-only"
-                [name]="sync.syncing() ? 'sync-outline' : 'cloud-offline-outline'"
-              ></ion-icon>
-            </ion-button>
-          }
-          @if (role() === 'admin') {
-            <ion-button (click)="go('settings')">
-              <ion-icon slot="icon-only" name="settings-outline"></ion-icon>
-            </ion-button>
-          }
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header [title]="room()?.name ?? 'Room'" defaultHref="/rooms">
+      <ion-buttons slot="end" end>
+        @if (sync.syncing() || sync.pending() > 0) {
+          <ion-button (click)="syncNow()">
+            <ion-icon
+              slot="icon-only"
+              [name]="sync.syncing() ? 'sync-outline' : 'cloud-offline-outline'"
+            ></ion-icon>
+          </ion-button>
+        }
+        @if (role() === 'admin') {
+          <ion-button (click)="go('settings')">
+            <ion-icon slot="icon-only" name="settings-outline"></ion-icon>
+          </ion-button>
+        }
+      </ion-buttons>
+    </app-page-header>
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
         <ion-refresher-content></ion-refresher-content>
@@ -77,19 +66,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
         <app-skeleton variant="home"></app-skeleton>
       } @else {
         <div class="page-pad fab-safe">
-          <button type="button" class="month-row" id="month-trigger">
-            <span>{{ label() }}</span>
-            <ion-icon name="chevron-down-outline"></ion-icon>
-          </button>
-          <ion-popover trigger="month-trigger" [keepContentsMounted]="true">
-            <ng-template>
-              <ion-datetime
-                presentation="month-year"
-                [value]="datetimeValue()"
-                (ionChange)="onMonthChange($any($event).detail.value)"
-              ></ion-datetime>
-            </ng-template>
-          </ion-popover>
+          <div class="month-row">{{ label() }}</div>
 
           <div class="hero-card">
             <p class="label-muted">Total paid</p>
@@ -186,15 +163,9 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
   styles: [
     `
       .month-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
         margin: 4px 0 14px;
         font-weight: 700;
         font-size: 1.05rem;
-      }
-      .month-row ion-icon {
-        color: var(--app-text-muted);
       }
       .hero-pills {
         display: flex;
@@ -224,21 +195,16 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     `,
   ],
   imports: [
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
     IonButton,
-    IonBackButton,
+    IonButtons,
     IonContent,
     IonList,
     IonItem,
     IonLabel,
     IonIcon,
-    IonDatetime,
-    IonPopover,
     IonRefresher,
     IonRefresherContent,
+    PageHeaderComponent,
     AppSkeletonComponent,
     AppTabBarComponent,
     CategoryIconComponent,
@@ -266,8 +232,6 @@ export class RoomMainPage {
   private readonly categoryMap = signal<Map<string, string>>(new Map());
   private readonly beneficiaryMap = signal<Map<string, string>>(new Map());
 
-  @ViewChild(IonPopover) private monthPopover?: IonPopover;
-
   readonly room = signal<Room | null>(null);
   readonly role = signal<RoomRole | null>(null);
   readonly expenses = signal<Expense[]>([]);
@@ -276,7 +240,6 @@ export class RoomMainPage {
 
   readonly monthKey = signal(toMonthKey(new Date()));
   readonly label = computed(() => monthLabel(this.monthKey()));
-  readonly datetimeValue = computed(() => `${this.monthKey()}-01`);
   readonly total = computed(() =>
     this.expenses().reduce((sum, expense) => sum + expense.amount, 0),
   );
@@ -431,20 +394,6 @@ export class RoomMainPage {
 
   async syncNow(): Promise<void> {
     await this.sync.process('manual');
-    await this.load();
-  }
-
-  async onMonthChange(value: string | string[] | null | undefined): Promise<void> {
-    const iso = Array.isArray(value) ? value[0] : value;
-    await this.monthPopover?.dismiss();
-    if (!iso) {
-      return;
-    }
-    const key = iso.slice(0, 7);
-    if (key === this.monthKey()) {
-      return;
-    }
-    this.monthKey.set(key);
     await this.load();
   }
 

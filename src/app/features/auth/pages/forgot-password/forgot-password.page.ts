@@ -2,33 +2,21 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
-  IonBackButton,
   IonButton,
-  IonButtons,
   IonContent,
-  IonHeader,
   IonIcon,
   IonInput,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
 } from '@ionic/angular/standalone';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { SupabaseService } from '../../../../core/services/supabase.service';
+import { PageHeaderComponent, SubmitButtonComponent } from '../../../../shared/components';
 import { describeError } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-forgot-password',
   template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button defaultHref="/login"></ion-back-button>
-        </ion-buttons>
-        <ion-title>Reset password</ion-title>
-      </ion-toolbar>
-    </ion-header>
+    <app-page-header title="Reset password" defaultHref="/login"></app-page-header>
     <ion-content>
       <div class="auth-wrap">
         @if (sent()) {
@@ -62,17 +50,12 @@ import { describeError } from '../../../../shared/utils';
               autocomplete="email"
               formControlName="email"
             ></ion-input>
-            <ion-button
-              expand="block"
+            <app-submit-button
+              label="Send reset link"
               type="submit"
-              [disabled]="loading() || form.invalid || !configured"
-            >
-              @if (loading()) {
-                <ion-spinner name="dots"></ion-spinner>
-              } @else {
-                Send reset link
-              }
-            </ion-button>
+              [loading]="loading()"
+              [disabled]="form.invalid || !configured"
+            ></app-submit-button>
           </form>
 
           <ion-button expand="block" fill="clear" routerLink="/login">Back to sign in</ion-button>
@@ -126,16 +109,12 @@ import { describeError } from '../../../../shared/utils';
   imports: [
     ReactiveFormsModule,
     RouterLink,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonContent,
     IonButton,
-    IonButtons,
-    IonBackButton,
     IonIcon,
     IonInput,
-    IonSpinner,
+    PageHeaderComponent,
+    SubmitButtonComponent,
   ],
 })
 export class ForgotPasswordPage {
