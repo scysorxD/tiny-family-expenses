@@ -1,4 +1,5 @@
 import { Component, Input, computed, signal } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { categoryColor } from '../utils';
 
 export interface DonutDatum {
@@ -19,10 +20,10 @@ interface DonutSegment {
   selector: 'app-donut-chart',
   template: `
     @if (segments().length === 0) {
-      <p class="label-muted donut-empty">No data.</p>
+      <p class="label-muted donut-empty">{{ 'common.noData' | translate }}</p>
     } @else {
       <div class="donut-wrap">
-        <svg viewBox="0 0 42 42" class="donut" role="img" [attr.aria-label]="centerLabel || 'Breakdown'">
+        <svg viewBox="0 0 42 42" class="donut" role="img" [attr.aria-label]="centerLabel || ('summary.breakdown' | translate)">
           <circle class="donut-ring" cx="21" cy="21" r="15.915"></circle>
           @for (seg of segments(); track seg.label) {
             <circle
@@ -123,6 +124,7 @@ interface DonutSegment {
       }
     `,
   ],
+  imports: [TranslatePipe],
 })
 export class DonutChartComponent {
   @Input() centerLabel = '';

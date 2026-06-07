@@ -6,6 +6,7 @@ import {
   IonContent,
   IonIcon,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Payer } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PayerService } from '../../../../core/services/payer.service';
@@ -21,7 +22,7 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-payers',
   template: `
-    <app-page-header title="Payers" [defaultHref]="backHref">
+    <app-page-header [title]="'payers.title' | translate" [defaultHref]="backHref">
       <ion-buttons slot="end" end>
         <ion-button (click)="create()" [disabled]="!isAdmin()">
           <ion-icon slot="icon-only" name="add"></ion-icon>
@@ -34,13 +35,13 @@ import { describeError } from '../../../../shared/utils';
       } @else {
         <div class="page-pad">
           @if (!isAdmin()) {
-            <div class="app-card text-muted">Only admins can manage payers.</div>
+            <div class="app-card text-muted">{{ 'payers.adminOnly' | translate }}</div>
           } @else if (items().length === 0) {
             <app-empty-state
               icon="wallet-outline"
-              title="No payers yet"
-              message="Add who splits the bill, e.g. Sibling 1."
-              actionLabel="Add payer"
+              [title]="'payers.emptyTitle' | translate"
+              [message]="'payers.emptyMessage' | translate"
+              [actionLabel]="'payers.addAction' | translate"
               (action)="create()"
             ></app-empty-state>
           } @else {
@@ -65,6 +66,7 @@ import { describeError } from '../../../../shared/utils';
     ManagedListComponent,
     AppSkeletonComponent,
     EmptyStateComponent,
+    TranslatePipe,
   ],
 })
 export class PayersPage {
@@ -72,6 +74,7 @@ export class PayersPage {
   private readonly service = inject(PayerService);
   private readonly roomService = inject(RoomService);
   private readonly feedback = inject(FeedbackService);
+  private readonly translate = inject(TranslateService);
 
   readonly items = signal<Payer[]>([]);
   readonly loading = signal(true);
@@ -106,7 +109,11 @@ export class PayersPage {
   }
 
   async create(): Promise<void> {
-    const name = await this.feedback.prompt('New payer', '', 'e.g. Sibling 1');
+    const name = await this.feedback.prompt(
+      this.translate.instant('payers.newTitle'),
+      '',
+      this.translate.instant('payers.newPlaceholder'),
+    );
     if (!name) {
       return;
     }
@@ -119,7 +126,7 @@ export class PayersPage {
   }
 
   async rename(item: ManagedListItem): Promise<void> {
-    const name = await this.feedback.prompt('Rename payer', item.name);
+    const name = await this.feedback.prompt(this.translate.instant('payers.renameTitle'), item.name);
     if (!name || name === item.name) {
       return;
     }
@@ -142,9 +149,9 @@ export class PayersPage {
 
   async remove(item: ManagedListItem): Promise<void> {
     const confirmed = await this.feedback.confirm(
-      'Delete payer',
-      `Delete "${item.name}"? Payers with closed-period payment history cannot be deleted.`,
-      'Delete',
+      this.translate.instant('payers.deleteTitle'),
+      this.translate.instant('payers.deleteMessage', { name: item.name }),
+      this.translate.instant('common.delete'),
     );
     if (!confirmed) {
       return;
@@ -152,7 +159,7 @@ export class PayersPage {
 
     try {
       await this.service.delete(item.id);
-      await this.feedback.success('Payer deleted');
+      await this.feedback.success(this.translate.instant('payers.deleted'));
       await this.load();
     } catch (error) {
       await this.feedback.error(describeError(error));

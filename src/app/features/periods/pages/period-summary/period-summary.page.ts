@@ -13,7 +13,9 @@ import {
   IonSegment,
   IonSegmentButton,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Beneficiary, Category, Expense, Period, Room, RoomRole } from '../../../../core/models';
+import { LanguageService } from '../../../../core/i18n';
 import { BeneficiaryService } from '../../../../core/services/beneficiary.service';
 import { CategoryService } from '../../../../core/services/category.service';
 import { ExpenseService } from '../../../../core/services/expense.service';
@@ -46,12 +48,10 @@ interface Group {
   total: number;
 }
 
-const SHARED_LABEL = 'Shared';
-
 @Component({
   selector: 'app-period-summary',
   template: `
-    <app-page-header title="Summary" [defaultHref]="backHref"></app-page-header>
+    <app-page-header [title]="'tabs.summary' | translate" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
         <ion-refresher-content></ion-refresher-content>
@@ -63,7 +63,7 @@ const SHARED_LABEL = 'Shared';
           <app-month-nav [label]="label()" (shift)="shift($event)"></app-month-nav>
 
           <div class="hero-card">
-            <p class="label-muted">Total expenses</p>
+            <p class="label-muted">{{ 'summary.totalExpenses' | translate }}</p>
             <div class="amount-hero">{{ format(total()) }}</div>
             <div class="hero-pills">
               <app-status-pill
@@ -75,34 +75,34 @@ const SHARED_LABEL = 'Shared';
             <div class="hero-actions">
               @if (isAdmin()) {
                 @if (status() === 'open') {
-                  <ion-button (click)="closeMonth()">Close month</ion-button>
+                  <ion-button (click)="closeMonth()">{{ 'summary.closeMonth' | translate }}</ion-button>
                 } @else {
-                  <ion-button fill="outline" (click)="reopenMonth()">Reopen month</ion-button>
+                  <ion-button fill="outline" (click)="reopenMonth()">{{ 'summary.reopenMonth' | translate }}</ion-button>
                 }
               }
               <ion-button fill="outline" (click)="go('collections')">
-                <ion-icon slot="start" name="people-outline"></ion-icon>Collections
+                <ion-icon slot="start" name="people-outline"></ion-icon>{{ 'tabs.collections' | translate }}
               </ion-button>
               @if (status() !== 'open') {
                 <ion-button fill="outline" (click)="go('message')">
-                  <ion-icon slot="start" name="share-social-outline"></ion-icon>Message
+                  <ion-icon slot="start" name="share-social-outline"></ion-icon>{{ 'summary.message' | translate }}
                 </ion-button>
               }
             </div>
           </div>
 
           <ion-segment class="view-segment" [value]="view()" (ionChange)="setView($any($event).detail.value)">
-            <ion-segment-button value="summary"><ion-label>Summary</ion-label></ion-segment-button>
-            <ion-segment-button value="expenses"><ion-label>Expenses</ion-label></ion-segment-button>
+            <ion-segment-button value="summary"><ion-label>{{ 'tabs.summary' | translate }}</ion-label></ion-segment-button>
+            <ion-segment-button value="expenses"><ion-label>{{ 'summary.expenses' | translate }}</ion-label></ion-segment-button>
           </ion-segment>
 
           @if (view() === 'summary') {
-            <h2 class="section-title">Breakdown</h2>
+            <h2 class="section-title">{{ 'summary.breakdown' | translate }}</h2>
             <div class="breakdown">
               <div class="app-card">
-                <div class="bd-head"><span>By category</span><ion-icon name="pie-chart-outline"></ion-icon></div>
+                <div class="bd-head"><span>{{ 'summary.byCategory' | translate }}</span><ion-icon name="pie-chart-outline"></ion-icon></div>
                 @if (byCategory().length === 0) {
-                  <p class="label-muted">No expenses.</p>
+                  <p class="label-muted">{{ 'summary.noExpensesShort' | translate }}</p>
                 } @else {
                   <app-donut-chart [data]="categoryChart()" [centerLabel]="shortTotal()"></app-donut-chart>
                 }
@@ -114,14 +114,14 @@ const SHARED_LABEL = 'Shared';
                 }
                 @if (byCategory().length > 3) {
                   <span class="link-action" (click)="setView('expenses')">
-                    View all <ion-icon name="chevron-forward"></ion-icon>
+                    {{ 'common.viewAll' | translate }} <ion-icon name="chevron-forward"></ion-icon>
                   </span>
                 }
               </div>
               <div class="app-card">
-                <div class="bd-head"><span>By beneficiary</span><ion-icon name="people-outline"></ion-icon></div>
+                <div class="bd-head"><span>{{ 'summary.byBeneficiary' | translate }}</span><ion-icon name="people-outline"></ion-icon></div>
                 @if (byBeneficiary().length === 0) {
-                  <p class="label-muted">No expenses.</p>
+                  <p class="label-muted">{{ 'summary.noExpensesShort' | translate }}</p>
                 }
                 @for (group of byBeneficiaryTop(); track group.label) {
                   <div class="bd-row">
@@ -131,26 +131,26 @@ const SHARED_LABEL = 'Shared';
                 }
                 @if (byBeneficiary().length > 3) {
                   <span class="link-action" (click)="setView('expenses')">
-                    View all <ion-icon name="chevron-forward"></ion-icon>
+                    {{ 'common.viewAll' | translate }} <ion-icon name="chevron-forward"></ion-icon>
                   </span>
                 }
               </div>
             </div>
 
             <div class="section-head">
-              <span class="section-title">Latest expenses</span>
+              <span class="section-title">{{ 'common.latestExpenses' | translate }}</span>
               @if (expenses().length > 3) {
                 <span class="link-action" (click)="setView('expenses')">
-                  View all <ion-icon name="chevron-forward"></ion-icon>
+                  {{ 'common.viewAll' | translate }} <ion-icon name="chevron-forward"></ion-icon>
                 </span>
               }
             </div>
             @if (expenses().length === 0) {
               <app-empty-state
                 icon="receipt-outline"
-                title="No expenses this month"
-                message="Add an expense to start the monthly summary."
-                actionLabel="Add expense"
+                [title]="'summary.emptyTitle' | translate"
+                [message]="'summary.emptyMessage' | translate"
+                [actionLabel]="'common.addExpense' | translate"
                 (action)="addExpense()"
               ></app-empty-state>
             } @else {
@@ -173,9 +173,9 @@ const SHARED_LABEL = 'Shared';
             @if (expenses().length === 0) {
               <app-empty-state
                 icon="receipt-outline"
-                title="No expenses this month"
-                message="Add an expense to start the monthly summary."
-                actionLabel="Add expense"
+                [title]="'summary.emptyTitle' | translate"
+                [message]="'summary.emptyMessage' | translate"
+                [actionLabel]="'common.addExpense' | translate"
                 (action)="addExpense()"
               ></app-empty-state>
             } @else {
@@ -291,6 +291,7 @@ const SHARED_LABEL = 'Shared';
     DonutChartComponent,
     EmptyStateComponent,
     StatusPillComponent,
+    TranslatePipe,
   ],
 })
 export class PeriodSummaryPage {
@@ -304,6 +305,8 @@ export class PeriodSummaryPage {
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
   private readonly realtime = inject(RealtimeService);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
 
   private realtimeOff?: () => void;
 
@@ -319,7 +322,7 @@ export class PeriodSummaryPage {
   readonly loading = signal(true);
   readonly view = signal<'summary' | 'expenses'>('summary');
 
-  readonly label = computed(() => monthLabel(this.monthKey()));
+  readonly label = computed(() => monthLabel(this.monthKey(), this.language.locale));
   readonly total = computed(() => this.expenses().reduce((sum, e) => sum + e.amount, 0));
   readonly status = computed(() => this.period()?.status ?? 'open');
   readonly isAdmin = computed(() => this.role() === 'admin');
@@ -344,6 +347,7 @@ export class PeriodSummaryPage {
   readonly byBeneficiary = computed<Group[]>(() => {
     const names = this.beneficiaryMap();
     const activeIds = this.activeBeneficiaryIds();
+    const sharedLabel = this.translate.instant('summary.shared');
     const totals = new Map<string, number>();
 
     for (const expense of this.expenses()) {
@@ -356,7 +360,7 @@ export class PeriodSummaryPage {
       // any other expense is split evenly across the beneficiaries it applies to.
       const coversAll = activeIds.size > 1 && [...activeIds].every((id) => ids.includes(id));
       if (coversAll) {
-        totals.set(SHARED_LABEL, (totals.get(SHARED_LABEL) ?? 0) + expense.amount);
+        totals.set(sharedLabel, (totals.get(sharedLabel) ?? 0) + expense.amount);
         continue;
       }
 
@@ -446,11 +450,11 @@ export class PeriodSummaryPage {
   }
 
   categoryName(categoryId: string): string {
-    return this.categoryMap().get(categoryId) ?? 'Category';
+    return this.categoryMap().get(categoryId) ?? this.translate.instant('common.category');
   }
 
   statusLabel(): string {
-    return this.status().replace('_', ' ');
+    return this.translate.instant('status.' + this.status());
   }
 
   statusTone(): StatusTone {
@@ -493,7 +497,7 @@ export class PeriodSummaryPage {
 
   async edit(expense: Expense): Promise<void> {
     if (this.status() !== 'open') {
-      await this.feedback.error('This month is closed. Expenses cannot be edited.');
+      await this.feedback.error(this.translate.instant('rooms.main.monthClosedEdit'));
       return;
     }
     const modal = await this.modalController.create({
@@ -514,7 +518,11 @@ export class PeriodSummaryPage {
 
   async remove(expense: Expense, event: Event): Promise<void> {
     event.stopPropagation();
-    const confirmed = await this.feedback.confirm('Delete expense', 'Delete this expense?', 'Delete');
+    const confirmed = await this.feedback.confirm(
+      this.translate.instant('summary.deleteExpenseTitle'),
+      this.translate.instant('summary.deleteExpenseMessage'),
+      this.translate.instant('common.delete'),
+    );
     if (!confirmed) {
       return;
     }
@@ -530,9 +538,9 @@ export class PeriodSummaryPage {
     const hasExpenses = this.expenses().length > 0;
     if (!hasExpenses) {
       const proceed = await this.feedback.confirm(
-        'No expenses',
-        'This month has no expenses. Close it anyway?',
-        'Close',
+        this.translate.instant('summary.noExpensesTitle'),
+        this.translate.instant('summary.noExpensesMessage'),
+        this.translate.instant('summary.close'),
       );
       if (!proceed) {
         return;
@@ -545,7 +553,7 @@ export class PeriodSummaryPage {
         this.monthKey(),
         this.room()?.includeDetailInMessage ?? true,
       );
-      await this.feedback.success('Month closed');
+      await this.feedback.success(this.translate.instant('summary.monthClosed'));
       await this.router.navigate(['/rooms', this.roomId, 'message'], {
         queryParams: { month: this.monthKey() },
       });
@@ -557,7 +565,7 @@ export class PeriodSummaryPage {
   async reopenMonth(): Promise<void> {
     try {
       await this.periodService.reopenPeriod(this.roomId, this.monthKey());
-      await this.feedback.success('Month reopened');
+      await this.feedback.success(this.translate.instant('summary.monthReopened'));
       await this.load();
     } catch (error) {
       await this.feedback.error(describeError(error));

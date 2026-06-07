@@ -12,6 +12,7 @@ import {
   IonSpinner,
   IonToggle,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { RoomService } from '../../../../core/services/room.service';
 import {
@@ -24,54 +25,59 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-room-settings',
   template: `
-    <app-page-header title="Room settings" [defaultHref]="backHref"></app-page-header>
+    <app-page-header [title]="'rooms.settings.title' | translate" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       @if (loading()) {
         <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else if (!isAdmin()) {
         <div class="page-pad">
-          <div class="app-card text-muted">Only admins can change room settings.</div>
+          <div class="app-card text-muted">{{ 'rooms.settings.adminOnly' | translate }}</div>
         </div>
       } @else {
         <div class="page-pad">
-          <h2 class="section-title">General</h2>
+          <h2 class="section-title">{{ 'rooms.settings.general' | translate }}</h2>
           <div class="form-stack">
-            <ion-input fill="outline" label="Room name" labelPlacement="stacked" [(ngModel)]="name"></ion-input>
-            <app-currency-select [(ngModel)]="currency"></app-currency-select>
+            <ion-input
+              fill="outline"
+              [label]="'rooms.create.name' | translate"
+              labelPlacement="stacked"
+              [(ngModel)]="name"
+            ></ion-input>
+            <app-currency-select [label]="'common.currency' | translate" [(ngModel)]="currency"></app-currency-select>
             <div class="app-card toggle-card">
-              <ion-toggle [(ngModel)]="includeDetail">Include detail in collection message</ion-toggle>
+              <ion-toggle [(ngModel)]="includeDetail">{{ 'rooms.settings.includeDetail' | translate }}</ion-toggle>
             </div>
             <app-submit-button
-              label="Save settings"
+              [label]="'rooms.settings.save' | translate"
               [loading]="saving()"
               (action)="save()"
             ></app-submit-button>
           </div>
 
-          <h2 class="section-title">People</h2>
+          <h2 class="section-title">{{ 'rooms.settings.people' | translate }}</h2>
           <div class="list-card">
             <ion-list>
               <ion-item button detail="true" (click)="go('beneficiaries')">
                 <span slot="start" class="lead-icon"><ion-icon name="person-outline"></ion-icon></span>
-                <ion-label>Beneficiaries</ion-label>
+                <ion-label>{{ 'nav.beneficiaries' | translate }}</ion-label>
               </ion-item>
               <ion-item button detail="true" (click)="go('payers')">
                 <span slot="start" class="lead-icon"><ion-icon name="wallet-outline"></ion-icon></span>
-                <ion-label>Payers</ion-label>
+                <ion-label>{{ 'nav.payers' | translate }}</ion-label>
               </ion-item>
               <ion-item button detail="true" (click)="go('members')">
                 <span slot="start" class="lead-icon"><ion-icon name="people-outline"></ion-icon></span>
-                <ion-label>Members &amp; invitations</ion-label>
+                <ion-label>{{ 'rooms.settings.membersInvites' | translate }}</ion-label>
               </ion-item>
             </ion-list>
           </div>
 
           <div class="danger-zone">
-            <h2 class="section-title">Danger zone</h2>
+            <h2 class="section-title">{{ 'rooms.settings.dangerZone' | translate }}</h2>
             <ion-button expand="block" color="danger" fill="outline" (click)="archive()">
-              Archive room
+              {{ 'rooms.settings.archive' | translate }}
             </ion-button>
-            <p class="label-muted hint">Archiving hides the room and blocks new changes.</p>
+            <p class="label-muted hint">{{ 'rooms.settings.archiveHint' | translate }}</p>
           </div>
         </div>
       }
@@ -107,6 +113,7 @@ import { describeError } from '../../../../shared/utils';
     PageHeaderComponent,
     CurrencySelectComponent,
     SubmitButtonComponent,
+    TranslatePipe,
   ],
 })
 export class RoomSettingsPage {
@@ -114,6 +121,7 @@ export class RoomSettingsPage {
   private readonly router = inject(Router);
   private readonly roomService = inject(RoomService);
   private readonly feedback = inject(FeedbackService);
+  private readonly translate = inject(TranslateService);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -159,7 +167,7 @@ export class RoomSettingsPage {
         currency: this.currency,
         includeDetailInMessage: this.includeDetail,
       });
-      await this.feedback.success('Settings saved');
+      await this.feedback.success(this.translate.instant('rooms.settings.saved'));
     } catch (error) {
       await this.feedback.error(describeError(error));
     } finally {
@@ -169,16 +177,16 @@ export class RoomSettingsPage {
 
   async archive(): Promise<void> {
     const confirmed = await this.feedback.confirm(
-      'Archive room',
-      'Archive this room? It will be hidden and locked for changes.',
-      'Archive',
+      this.translate.instant('rooms.settings.archive'),
+      this.translate.instant('rooms.settings.archiveConfirmMessage'),
+      this.translate.instant('rooms.settings.archiveConfirmButton'),
     );
     if (!confirmed) {
       return;
     }
     try {
       await this.roomService.archiveRoom(this.roomId);
-      await this.feedback.success('Room archived');
+      await this.feedback.success(this.translate.instant('rooms.settings.archived'));
       await this.router.navigateByUrl('/rooms');
     } catch (error) {
       await this.feedback.error(describeError(error));

@@ -6,6 +6,7 @@ import {
   IonFooter,
   IonIcon,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../core/auth/auth.service';
 import { PreferencesService } from '../../core/services/preferences.service';
 
@@ -18,11 +19,11 @@ export type TabKey = 'home' | 'summary' | 'collections' | 'more';
       <div class="tab-bar">
         <button type="button" class="tab" [class.active]="active === 'home'" (click)="go('')">
           <ion-icon [name]="active === 'home' ? 'home' : 'home-outline'"></ion-icon>
-          <span>Home</span>
+          <span>{{ 'tabs.home' | translate }}</span>
         </button>
         <button type="button" class="tab" [class.active]="active === 'summary'" (click)="go('summary')">
           <ion-icon name="pie-chart-outline"></ion-icon>
-          <span>Summary</span>
+          <span>{{ 'tabs.summary' | translate }}</span>
         </button>
         <div class="tab-fab-slot">
           <button type="button" class="tab-fab" (click)="addExpense.emit()">
@@ -36,11 +37,11 @@ export type TabKey = 'home' | 'summary' | 'collections' | 'more';
           (click)="go('collections')"
         >
           <ion-icon name="people-outline"></ion-icon>
-          <span>Collections</span>
+          <span>{{ 'tabs.collections' | translate }}</span>
         </button>
         <button type="button" class="tab" [class.active]="active === 'more'" (click)="openMore()">
           <ion-icon name="ellipsis-horizontal"></ion-icon>
-          <span>More</span>
+          <span>{{ 'tabs.more' | translate }}</span>
         </button>
       </div>
     </ion-footer>
@@ -103,7 +104,7 @@ export type TabKey = 'home' | 'summary' | 'collections' | 'more';
       }
     `,
   ],
-  imports: [IonFooter, IonIcon],
+  imports: [IonFooter, IonIcon, TranslatePipe],
 })
 export class AppTabBarComponent {
   @Input() roomId: string | null = null;
@@ -114,6 +115,7 @@ export class AppTabBarComponent {
   private readonly actionSheet = inject(ActionSheetController);
   private readonly auth = inject(AuthService);
   private readonly preferences = inject(PreferencesService);
+  private readonly translate = inject(TranslateService);
 
   go(section: string): void {
     if (!this.roomId) {
@@ -124,24 +126,25 @@ export class AppTabBarComponent {
   }
 
   async openMore(): Promise<void> {
+    const t = (key: string): string => this.translate.instant(key);
     const buttons: ActionSheetButton[] = [];
     const roomId = this.roomId;
     if (roomId) {
       buttons.push(
-        { text: 'Dashboard', icon: 'stats-chart-outline', handler: () => this.nav(roomId, 'dashboard') },
-        { text: 'Categories', icon: 'pricetag-outline', handler: () => this.nav(roomId, 'categories') },
-        { text: 'Members', icon: 'people-outline', handler: () => this.nav(roomId, 'members') },
-        { text: 'Beneficiaries', icon: 'person-outline', handler: () => this.nav(roomId, 'beneficiaries') },
-        { text: 'Payers', icon: 'wallet-outline', handler: () => this.nav(roomId, 'payers') },
-        { text: 'Room settings', icon: 'settings-outline', handler: () => this.nav(roomId, 'settings') },
+        { text: t('nav.dashboard'), icon: 'stats-chart-outline', handler: () => this.nav(roomId, 'dashboard') },
+        { text: t('nav.categories'), icon: 'pricetag-outline', handler: () => this.nav(roomId, 'categories') },
+        { text: t('nav.members'), icon: 'people-outline', handler: () => this.nav(roomId, 'members') },
+        { text: t('nav.beneficiaries'), icon: 'person-outline', handler: () => this.nav(roomId, 'beneficiaries') },
+        { text: t('nav.payers'), icon: 'wallet-outline', handler: () => this.nav(roomId, 'payers') },
+        { text: t('nav.settings'), icon: 'settings-outline', handler: () => this.nav(roomId, 'settings') },
       );
     }
     buttons.push(
-      { text: 'Switch room', icon: 'home-outline', handler: () => void this.router.navigateByUrl('/rooms') },
-      { text: 'Sign out', role: 'destructive', icon: 'lock-closed-outline', handler: () => void this.signOut() },
-      { text: 'Cancel', role: 'cancel' },
+      { text: t('nav.switchRoom'), icon: 'home-outline', handler: () => void this.router.navigateByUrl('/rooms') },
+      { text: t('nav.signOut'), role: 'destructive', icon: 'lock-closed-outline', handler: () => void this.signOut() },
+      { text: t('common.cancel'), role: 'cancel' },
     );
-    const sheet = await this.actionSheet.create({ header: 'More', buttons });
+    const sheet = await this.actionSheet.create({ header: t('tabs.more'), buttons });
     await sheet.present();
   }
 

@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { IonContent, IonIcon } from '@ionic/angular/standalone';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-auth-shell',
@@ -13,9 +14,7 @@ import { IonContent, IonIcon } from '@ionic/angular/standalone';
         </div>
 
         @if (!configured) {
-          <div class="app-card warn">
-            Supabase is not configured yet. Add your project URL and anon key in environment.ts.
-          </div>
+          <div class="app-card warn">{{ 'auth.notConfigured' | translate }}</div>
         }
 
         <ng-content></ng-content>
@@ -59,7 +58,7 @@ import { IonContent, IonIcon } from '@ionic/angular/standalone';
       }
     `,
   ],
-  imports: [IonContent, IonIcon],
+  imports: [IonContent, IonIcon, TranslatePipe],
 })
 export class AuthShellComponent {
   @Input() title = '';

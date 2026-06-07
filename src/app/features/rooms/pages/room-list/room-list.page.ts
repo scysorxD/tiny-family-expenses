@@ -10,7 +10,9 @@ import {
   IonRefresher,
   IonRefresherContent,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { LanguageService } from '../../../../core/i18n';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
 import { RoomService } from '../../../../core/services/room.service';
@@ -29,7 +31,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
         <div class="greeting-row">
           <div class="greeting-text">
             <h1 class="greeting">{{ greeting() }}, {{ firstName() }}</h1>
-            <p class="label-muted">Manage your shared expense rooms</p>
+            <p class="label-muted">{{ 'rooms.list.subtitle' | translate }}</p>
           </div>
           <div class="greeting-actions">
             <span class="avatar"><ion-icon name="person-circle-outline"></ion-icon></span>
@@ -42,13 +44,13 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
         @if (loading()) {
           <app-skeleton variant="list" [rows]="3"></app-skeleton>
         } @else {
-          <h2 class="section-title">My rooms</h2>
+          <h2 class="section-title">{{ 'rooms.list.myRooms' | translate }}</h2>
           @if (rooms().length === 0) {
             <app-empty-state
               icon="home-outline"
-              title="No rooms yet"
-              message="Create your first room to start tracking shared expenses."
-              actionLabel="Create room"
+              [title]="'rooms.list.emptyTitle' | translate"
+              [message]="'rooms.list.emptyMessage' | translate"
+              [actionLabel]="'rooms.list.createRoom' | translate"
               (action)="create()"
             ></app-empty-state>
           } @else {
@@ -60,7 +62,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
                     <span class="room-name">{{ membership.room.name }}</span>
                     <span class="label-muted">{{ membership.room.currency }} · {{ currentMonth }}</span>
                     <app-status-pill
-                      [label]="membership.role"
+                      [label]="'role.' + membership.role | translate"
                       [tone]="membership.role === 'admin' ? 'paid' : 'muted'"
                     ></app-status-pill>
                   </span>
@@ -73,10 +75,8 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
           <div class="promo-card">
             <span class="promo-icon"><ion-icon name="home-outline"></ion-icon></span>
             <div>
-              <h3 class="promo-title">Keep expenses organized</h3>
-              <p class="label-muted">
-                Create rooms for your home, trips, events, or any shared expenses.
-              </p>
+              <h3 class="promo-title">{{ 'rooms.list.promoTitle' | translate }}</h3>
+              <p class="label-muted">{{ 'rooms.list.promoMessage' | translate }}</p>
             </div>
           </div>
         }
@@ -209,6 +209,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
     AppSkeletonComponent,
     EmptyStateComponent,
     StatusPillComponent,
+    TranslatePipe,
   ],
 })
 export class RoomListPage {
@@ -218,23 +219,25 @@ export class RoomListPage {
   private readonly feedback = inject(FeedbackService);
   private readonly actionSheet = inject(ActionSheetController);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
 
   readonly rooms = signal<RoomMembership[]>([]);
   readonly loading = signal(true);
   readonly lastRoomId = signal<string | null>(null);
 
-  readonly currentMonth = monthLabel(toMonthKey(new Date()));
+  readonly currentMonth = monthLabel(toMonthKey(new Date()), this.language.locale);
   readonly tabRoomId = computed(() => this.lastRoomId() ?? this.rooms()[0]?.room.id ?? null);
 
   greeting(): string {
     const hour = new Date().getHours();
     if (hour < 12) {
-      return 'Good morning';
+      return this.translate.instant('rooms.list.greetingMorning');
     }
     if (hour < 18) {
-      return 'Good afternoon';
+      return this.translate.instant('rooms.list.greetingAfternoon');
     }
-    return 'Good evening';
+    return this.translate.instant('rooms.list.greetingEvening');
   }
 
   firstName(): string {
@@ -245,7 +248,7 @@ export class RoomListPage {
       return name.split(' ')[0];
     }
     const email = user?.email ?? '';
-    return email ? email.split('@')[0] : 'there';
+    return email ? email.split('@')[0] : this.translate.instant('rooms.list.greetingFallback');
   }
 
   async ionViewWillEnter(): Promise<void> {
@@ -289,12 +292,12 @@ export class RoomListPage {
     const sheet = await this.actionSheet.create({
       buttons: [
         {
-          text: 'Sign out',
+          text: this.translate.instant('nav.signOut'),
           role: 'destructive',
           icon: 'lock-closed-outline',
           handler: () => void this.signOut(),
         },
-        { text: 'Cancel', role: 'cancel' },
+        { text: this.translate.instant('common.cancel'), role: 'cancel' },
       ],
     });
     await sheet.present();

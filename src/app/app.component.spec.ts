@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { TranslateLoader, provideTranslateService } from '@ngx-translate/core';
 import { AppComponent } from './app.component';
+import { EmbeddedTranslateLoader } from './core/i18n';
 import { LocalDatabaseService } from './data/local/local-database.service';
 
 describe('AppComponent', () => {
@@ -9,6 +11,10 @@ describe('AppComponent', () => {
       imports: [AppComponent],
       providers: [
         provideRouter([]),
+        provideTranslateService({
+          fallbackLang: 'en',
+          loader: { provide: TranslateLoader, useClass: EmbeddedTranslateLoader },
+        }),
         {
           provide: LocalDatabaseService,
           useValue: {

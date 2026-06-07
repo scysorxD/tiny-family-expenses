@@ -9,7 +9,9 @@ import {
   IonTextarea,
   IonToggle,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Category, Expense, Period, Room } from '../../../../core/models';
+import { LanguageService } from '../../../../core/i18n';
 import { CategoryService } from '../../../../core/services/category.service';
 import { ExpenseService } from '../../../../core/services/expense.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
@@ -29,31 +31,37 @@ import {
 @Component({
   selector: 'app-collection-message',
   template: `
-    <app-page-header title="Collection message" [defaultHref]="backHref"></app-page-header>
+    <app-page-header [title]="'collections.title' | translate" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       @if (loading()) {
         <div class="center-pad"><ion-spinner></ion-spinner></div>
       } @else if (!period() || period()?.status === 'open') {
         <div class="page-pad">
           <div class="app-card text-muted">
-            Close the month first to generate the collection message.
+            {{ 'collections.closeFirst' | translate }}
           </div>
         </div>
       } @else {
         <div class="page-pad">
           <div class="app-card">
             <p class="label-muted system">
-              System total: {{ format(period()?.systemTotal ?? 0) }} ·
-              {{ period()?.payerCount }} payers ·
-              {{ format(period()?.systemAmountPerPayer ?? 0) }} each
+              {{
+                'collections.systemLine'
+                  | translate
+                    : {
+                        total: format(period()?.systemTotal ?? 0),
+                        count: period()?.payerCount,
+                        each: format(period()?.systemAmountPerPayer ?? 0)
+                      }
+              }}
             </p>
           </div>
 
           <div class="app-card toggle-card">
-            <ion-toggle [(ngModel)]="includeDetail" (ionChange)="regenerate()">Include detail</ion-toggle>
+            <ion-toggle [(ngModel)]="includeDetail" (ionChange)="regenerate()">{{ 'collections.includeDetail' | translate }}</ion-toggle>
           </div>
 
-          <h2 class="field-label">Message</h2>
+          <h2 class="field-label">{{ 'summary.message' | translate }}</h2>
           <ion-textarea
             fill="outline"
             [(ngModel)]="message"
@@ -62,18 +70,18 @@ import {
           ></ion-textarea>
 
           <span class="link-action regen" (click)="regenerate()">
-            <ion-icon name="refresh"></ion-icon> Regenerate from system
+            <ion-icon name="refresh"></ion-icon> {{ 'collections.regenerate' | translate }}
           </span>
 
           <div class="actions">
             <ion-button (click)="copy()">
-              <ion-icon slot="start" name="copy-outline"></ion-icon> Copy
+              <ion-icon slot="start" name="copy-outline"></ion-icon> {{ 'common.copy' | translate }}
             </ion-button>
             <ion-button (click)="share()">
-              <ion-icon slot="start" name="share-social-outline"></ion-icon> Share
+              <ion-icon slot="start" name="share-social-outline"></ion-icon> {{ 'common.share' | translate }}
             </ion-button>
             <ion-button fill="outline" (click)="saveDraft()">
-              <ion-icon slot="start" name="save-outline"></ion-icon> Save
+              <ion-icon slot="start" name="save-outline"></ion-icon> {{ 'common.save' | translate }}
             </ion-button>
           </div>
         </div>
@@ -120,6 +128,7 @@ import {
     IonIcon,
     IonSpinner,
     PageHeaderComponent,
+    TranslatePipe,
   ],
 })
 export class CollectionMessagePage {
@@ -130,6 +139,8 @@ export class CollectionMessagePage {
   private readonly categoryService = inject(CategoryService);
   private readonly shareService = inject(ShareService);
   private readonly feedback = inject(FeedbackService);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
 
   readonly room = signal<Room | null>(null);
   readonly period = signal<Period | null>(null);
@@ -188,7 +199,10 @@ export class CollectionMessagePage {
       totals.set(expense.categoryId, (totals.get(expense.categoryId) ?? 0) + expense.amount);
     }
     return [...totals.entries()]
-      .map(([categoryId, amount]) => ({ categoryName: names.get(categoryId) ?? 'Category', amount }))
+      .map(([categoryId, amount]) => ({
+        categoryName: names.get(categoryId) ?? this.translate.instant('common.category'),
+        amount,
+      }))
       .sort((a, b) => b.amount - a.amount);
   }
 
@@ -201,15 +215,18 @@ export class CollectionMessagePage {
     if (!period) {
       return;
     }
-    this.message = generateCollectionMessage({
-      monthLabel: monthLabel(this.monthKey),
-      total: period.systemTotal ?? 0,
-      payerCount: period.payerCount ?? 0,
-      amountPerPayer: period.systemAmountPerPayer ?? 0,
-      categoryBreakdown: this.breakdown,
-      includeDetail: this.includeDetail,
-      currency: this.room()?.currency ?? 'ARS',
-    });
+    this.message = generateCollectionMessage(
+      {
+        monthLabel: monthLabel(this.monthKey, this.language.locale),
+        total: period.systemTotal ?? 0,
+        payerCount: period.payerCount ?? 0,
+        amountPerPayer: period.systemAmountPerPayer ?? 0,
+        categoryBreakdown: this.breakdown,
+        includeDetail: this.includeDetail,
+        currency: this.room()?.currency ?? 'ARS',
+      },
+      (key, params) => this.translate.instant(key, params),
+    );
   }
 
   private async persist(): Promise<void> {
@@ -222,16 +239,16 @@ export class CollectionMessagePage {
   async copy(): Promise<void> {
     await this.shareService.copy(this.message);
     await this.persist();
-    await this.feedback.success('Message copied and saved');
+    await this.feedback.success(this.translate.instant('collections.copiedSaved'));
   }
 
   async share(): Promise<void> {
     await this.persist();
-    await this.shareService.share(this.message, 'Monthly expenses');
+    await this.shareService.share(this.message, this.translate.instant('collections.shareTitle'));
   }
 
   async saveDraft(): Promise<void> {
     await this.persist();
-    await this.feedback.success('Message saved');
+    await this.feedback.success(this.translate.instant('collections.saved'));
   }
 }

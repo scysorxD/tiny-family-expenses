@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { IonButton, IonInput } from '@ionic/angular/standalone';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
@@ -13,14 +14,14 @@ import { describeError } from '../../../../shared/utils';
   selector: 'app-login',
   template: `
     <app-auth-shell
-      title="Welcome back"
-      subtitle="Sign in to manage your shared expenses"
+      [title]="'auth.login.title' | translate"
+      [subtitle]="'auth.login.subtitle' | translate"
       [configured]="configured"
     >
       <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
         <ion-input
           fill="outline"
-          label="Email"
+          [label]="'auth.email' | translate"
           labelPlacement="stacked"
           type="email"
           autocomplete="email"
@@ -28,22 +29,22 @@ import { describeError } from '../../../../shared/utils';
         ></ion-input>
         <ion-input
           fill="outline"
-          label="Password"
+          [label]="'auth.password' | translate"
           labelPlacement="stacked"
           type="password"
           autocomplete="current-password"
           formControlName="password"
         ></ion-input>
         <app-submit-button
-          label="Sign in"
+          [label]="'auth.login.signIn' | translate"
           type="submit"
           [loading]="loading()"
           [disabled]="form.invalid || !configured"
         ></app-submit-button>
       </form>
 
-      <ion-button expand="block" fill="clear" routerLink="/register">Create an account</ion-button>
-      <ion-button expand="block" fill="clear" routerLink="/forgot-password">Forgot password?</ion-button>
+      <ion-button expand="block" fill="clear" routerLink="/register">{{ 'auth.login.createAccount' | translate }}</ion-button>
+      <ion-button expand="block" fill="clear" routerLink="/forgot-password">{{ 'auth.login.forgot' | translate }}</ion-button>
     </app-auth-shell>
   `,
   styles: [
@@ -63,6 +64,7 @@ import { describeError } from '../../../../shared/utils';
     IonButton,
     AuthShellComponent,
     SubmitButtonComponent,
+    TranslatePipe,
   ],
 })
 export class LoginPage {

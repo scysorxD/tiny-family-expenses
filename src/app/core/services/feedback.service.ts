@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular/standalone';
+import { TranslateService } from '@ngx-translate/core';
 
 type ToastColor = 'success' | 'danger' | 'warning' | 'medium';
 
@@ -9,6 +10,7 @@ type ToastColor = 'success' | 'danger' | 'warning' | 'medium';
 export class FeedbackService {
   private readonly toastController = inject(ToastController);
   private readonly alertController = inject(AlertController);
+  private readonly translate = inject(TranslateService);
 
   async toast(message: string, color: ToastColor = 'medium'): Promise<void> {
     const toast = await this.toastController.create({
@@ -28,15 +30,17 @@ export class FeedbackService {
     return this.toast(message, 'danger');
   }
 
-  async confirm(header: string, message: string, confirmText = 'Confirm'): Promise<boolean> {
+  async confirm(header: string, message: string, confirmText?: string): Promise<boolean> {
+    const confirmLabel = confirmText ?? this.translate.instant('common.confirm');
+    const cancelLabel = this.translate.instant('common.cancel');
     return new Promise((resolve) => {
       void this.alertController
         .create({
           header,
           message,
           buttons: [
-            { text: 'Cancel', role: 'cancel', handler: () => resolve(false) },
-            { text: confirmText, role: 'confirm', handler: () => resolve(true) },
+            { text: cancelLabel, role: 'cancel', handler: () => resolve(false) },
+            { text: confirmLabel, role: 'confirm', handler: () => resolve(true) },
           ],
         })
         .then((alert) => alert.present());
@@ -44,15 +48,17 @@ export class FeedbackService {
   }
 
   async prompt(header: string, initial = '', placeholder = ''): Promise<string | null> {
+    const cancelLabel = this.translate.instant('common.cancel');
+    const saveLabel = this.translate.instant('common.save');
     return new Promise((resolve) => {
       void this.alertController
         .create({
           header,
           inputs: [{ name: 'value', type: 'text', value: initial, placeholder }],
           buttons: [
-            { text: 'Cancel', role: 'cancel', handler: () => resolve(null) },
+            { text: cancelLabel, role: 'cancel', handler: () => resolve(null) },
             {
-              text: 'Save',
+              text: saveLabel,
               role: 'confirm',
               handler: (data: { value?: string }) => resolve((data?.value ?? '').trim() || null),
             },

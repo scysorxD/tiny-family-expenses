@@ -7,6 +7,7 @@ import {
   IonIcon,
   IonInput,
 } from '@ionic/angular/standalone';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { SupabaseService } from '../../../../core/services/supabase.service';
@@ -16,49 +17,47 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-forgot-password',
   template: `
-    <app-page-header title="Reset password" defaultHref="/login"></app-page-header>
+    <app-page-header [title]="'auth.forgot.headerTitle' | translate" defaultHref="/login"></app-page-header>
     <ion-content>
       <div class="auth-wrap">
         @if (sent()) {
           <div class="brand">
             <span class="brand-icon"><ion-icon name="mail-outline"></ion-icon></span>
-            <h1 class="brand-title">Check your inbox</h1>
+            <h1 class="brand-title">{{ 'auth.forgot.checkInboxTitle' | translate }}</h1>
             <p class="label-muted">
-              If an account exists for {{ sentTo() }}, we've sent a link to reset your password.
+              {{ 'auth.forgot.checkInboxText' | translate: { email: sentTo() } }}
             </p>
           </div>
-          <ion-button expand="block" fill="outline" routerLink="/login">Back to sign in</ion-button>
+          <ion-button expand="block" fill="outline" routerLink="/login">{{ 'auth.forgot.backToSignIn' | translate }}</ion-button>
         } @else {
           <div class="brand">
             <span class="brand-icon"><ion-icon name="lock-closed-outline"></ion-icon></span>
-            <h1 class="brand-title">Forgot password?</h1>
-            <p class="label-muted">Enter your email and we'll send you a reset link.</p>
+            <h1 class="brand-title">{{ 'auth.forgot.title' | translate }}</h1>
+            <p class="label-muted">{{ 'auth.forgot.subtitle' | translate }}</p>
           </div>
 
           @if (!configured) {
-            <div class="app-card warn">
-              Supabase is not configured yet. Add your project URL and anon key in environment.ts.
-            </div>
+            <div class="app-card warn">{{ 'auth.notConfigured' | translate }}</div>
           }
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
             <ion-input
               fill="outline"
-              label="Email"
+              [label]="'auth.email' | translate"
               labelPlacement="stacked"
               type="email"
               autocomplete="email"
               formControlName="email"
             ></ion-input>
             <app-submit-button
-              label="Send reset link"
+              [label]="'auth.forgot.sendLink' | translate"
               type="submit"
               [loading]="loading()"
               [disabled]="form.invalid || !configured"
             ></app-submit-button>
           </form>
 
-          <ion-button expand="block" fill="clear" routerLink="/login">Back to sign in</ion-button>
+          <ion-button expand="block" fill="clear" routerLink="/login">{{ 'auth.forgot.backToSignIn' | translate }}</ion-button>
         }
       </div>
     </ion-content>
@@ -115,6 +114,7 @@ import { describeError } from '../../../../shared/utils';
     IonInput,
     PageHeaderComponent,
     SubmitButtonComponent,
+    TranslatePipe,
   ],
 })
 export class ForgotPasswordPage {

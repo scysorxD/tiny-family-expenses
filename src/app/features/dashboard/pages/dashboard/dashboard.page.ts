@@ -8,7 +8,9 @@ import {
   IonRefresher,
   IonRefresherContent,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Period, Room } from '../../../../core/models';
+import { LanguageService } from '../../../../core/i18n';
 import {
   CategoryTotal,
   DashboardService,
@@ -38,7 +40,7 @@ import {
 @Component({
   selector: 'app-dashboard',
   template: `
-    <app-page-header title="Dashboard" [defaultHref]="backHref"></app-page-header>
+    <app-page-header [title]="'nav.dashboard' | translate" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
         <ion-refresher-content></ion-refresher-content>
@@ -50,26 +52,26 @@ import {
           <div class="hero-card">
             <p class="label-muted">{{ currentLabel }}</p>
             <div class="amount-hero">{{ format(currentTotal()) }}</div>
-            <p class="label-muted">Monthly average: {{ format(average()) }}</p>
+            <p class="label-muted">{{ 'dashboard.monthlyAverage' | translate: { amount: format(average()) } }}</p>
           </div>
 
           @if (trend().length > 1) {
-            <h2 class="section-title">Spending trend</h2>
+            <h2 class="section-title">{{ 'dashboard.spendingTrend' | translate }}</h2>
             <div class="app-card">
               <app-bar-trend [data]="trend()"></app-bar-trend>
             </div>
           }
 
           @if (categoryChart().length > 0) {
-            <h2 class="section-title">{{ currentLabel }} by category</h2>
+            <h2 class="section-title">{{ 'dashboard.byCategory' | translate: { month: currentLabel } }}</h2>
             <div class="app-card">
               <app-donut-chart [data]="categoryChart()" [centerLabel]="shortTotal()"></app-donut-chart>
             </div>
           }
 
-          <h2 class="section-title">Pending collection</h2>
+          <h2 class="section-title">{{ 'dashboard.pendingCollection' | translate }}</h2>
           @if (pending().length === 0) {
-            <div class="app-card text-muted">Nothing pending. All closed months are fully paid.</div>
+            <div class="app-card text-muted">{{ 'dashboard.nothingPending' | translate }}</div>
           } @else {
             <div class="list-card">
               <ion-list>
@@ -87,9 +89,9 @@ import {
             </div>
           }
 
-          <h2 class="section-title">Recent months</h2>
+          <h2 class="section-title">{{ 'dashboard.recentMonths' | translate }}</h2>
           @if (totals().length === 0) {
-            <div class="app-card text-muted">No expenses recorded yet.</div>
+            <div class="app-card text-muted">{{ 'dashboard.noExpensesRecorded' | translate }}</div>
           } @else {
             <div class="list-card">
               <ion-list>
@@ -118,6 +120,7 @@ import {
     BarTrendComponent,
     DonutChartComponent,
     StatusPillComponent,
+    TranslatePipe,
   ],
 })
 export class DashboardPage {
@@ -128,6 +131,8 @@ export class DashboardPage {
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
   private readonly realtime = inject(RealtimeService);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
 
   private realtimeOff?: () => void;
 
@@ -145,7 +150,7 @@ export class DashboardPage {
     this.totals()
       .slice(0, 6)
       .reverse()
-      .map((item) => ({ label: shortMonthLabel(item.monthKey), value: item.total })),
+      .map((item) => ({ label: shortMonthLabel(item.monthKey, this.language.locale), value: item.total })),
   );
 
   readonly categoryChart = computed<DonutDatum[]>(() =>
@@ -153,7 +158,7 @@ export class DashboardPage {
   );
 
   get currentLabel(): string {
-    return monthLabel(this.currentMonthKey);
+    return monthLabel(this.currentMonthKey, this.language.locale);
   }
 
   private get roomId(): string {
@@ -217,11 +222,11 @@ export class DashboardPage {
   }
 
   label(monthKey: string): string {
-    return monthLabel(monthKey);
+    return monthLabel(monthKey, this.language.locale);
   }
 
   statusLabel(period: Period): string {
-    return period.status.replace('_', ' ');
+    return this.translate.instant('status.' + period.status);
   }
 
   openCollections(monthKey: string): void {
