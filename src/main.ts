@@ -11,9 +11,7 @@ import { EmbeddedTranslateLoader, LanguageService } from './app/core/i18n';
 bootstrapApplication(AppComponent, {
   providers: [
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
-    // animated:false avoids a stuck native page-enter transition that can leave
-    // the first routed page at opacity:0 (blank) on Android WebView.
-    provideIonicAngular({ animated: false }),
+    provideIonicAngular(),
     provideRouter(routes, withPreloading(PreloadAllModules)),
     provideTranslateService({
       fallbackLang: 'en',

@@ -28,7 +28,6 @@ export class EntryPage implements OnInit {
   async ngOnInit(): Promise<void> {
     // The entryRedirectGuard normally resolves the destination before this page
     // mounts; this remains as a defensive fallback so we never stay on a spinner.
-    console.log('[Entry] EntryPage initialized (fallback redirect)');
     try {
       await this.auth.ensureInitialized();
 
@@ -40,7 +39,7 @@ export class EntryPage implements OnInit {
       const lastRoom = await this.preferences.getLastRoomId();
       await this.router.navigateByUrl(lastRoom ? `/rooms/${lastRoom}` : '/rooms');
     } catch (err) {
-      console.error('[Entry] fallback redirect failed', err);
+      console.error('Entry redirect failed', err);
       await this.router.navigateByUrl('/login');
     }
   }

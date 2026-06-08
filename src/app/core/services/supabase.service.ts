@@ -45,9 +45,6 @@ export class SupabaseService {
       }
 
       const isNative = Capacitor.isNativePlatform();
-      console.log(
-        `[Supabase] Initializing client (native=${isNative}, lock=${isNative ? 'in-memory' : 'navigator.locks'})`,
-      );
 
       // Only the public anon key is used in the client. Never embed a service-role key here.
       this.cachedClient = createClient(environment.supabaseUrl, environment.supabaseAnonKey, {
@@ -59,8 +56,6 @@ export class SupabaseService {
           ...(isNative ? { lock: inMemoryLock } : {}),
         },
       });
-
-      console.log('[Supabase] Client initialized');
     }
 
     return this.cachedClient;
