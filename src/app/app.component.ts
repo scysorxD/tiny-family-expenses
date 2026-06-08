@@ -1,4 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { AfterViewInit, Component, inject } from '@angular/core';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationStart,
+  Router,
+} from '@angular/router';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
@@ -62,12 +69,15 @@ import { LocalDatabaseService } from './data/local/local-database.service';
   templateUrl: 'app.component.html',
   imports: [IonApp, IonRouterOutlet],
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
   private readonly localDatabase = inject(LocalDatabaseService);
   private readonly auth = inject(AuthService);
   private readonly syncQueue = inject(SyncQueueService);
+  private readonly router = inject(Router);
 
   constructor() {
+    console.log('[App] AppComponent initialized');
+    this.logNavigationEvents();
     addIcons({
       add,
       addCircleOutline,
@@ -125,6 +135,25 @@ export class AppComponent {
     if (Capacitor.isNativePlatform()) {
       void this.initNative();
     }
+  }
+
+  ngAfterViewInit(): void {
+    console.log('[Layout] ion-router-outlet rendered');
+    console.log(`[Router] initial url ${this.router.url}`);
+  }
+
+  private logNavigationEvents(): void {
+    this.router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) {
+        console.log(`[Router] NavigationStart ${event.url}`);
+      } else if (event instanceof NavigationEnd) {
+        console.log(`[Router] NavigationEnd ${event.urlAfterRedirects}`);
+      } else if (event instanceof NavigationCancel) {
+        console.warn(`[Router] NavigationCancel ${event.url} reason=${event.reason}`);
+      } else if (event instanceof NavigationError) {
+        console.error(`[Router] NavigationError ${event.url}`, event.error);
+      }
+    });
   }
 
   private async initNative(): Promise<void> {

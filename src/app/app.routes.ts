@@ -1,10 +1,11 @@
 import { Routes } from '@angular/router';
-import { authGuard, publicOnlyGuard } from './core/guards/auth.guard';
+import { authGuard, entryRedirectGuard, publicOnlyGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
+    canActivate: [entryRedirectGuard],
     loadComponent: () => import('./features/shell/pages/entry/entry.page').then((m) => m.EntryPage),
   },
   {
