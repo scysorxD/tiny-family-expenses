@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { IonButton, IonInput } from '@ionic/angular/standalone';
@@ -13,6 +13,11 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-login',
   template: `
+    <div
+      style="background:red;color:white;font-size:24px;z-index:999999;position:fixed;top:80px;left:16px;padding:8px"
+    >
+      LOGIN PAGE VISIBLE
+    </div>
     <app-auth-shell
       [title]="'auth.login.title' | translate"
       [subtitle]="'auth.login.subtitle' | translate"
@@ -67,7 +72,7 @@ import { describeError } from '../../../../shared/utils';
     TranslatePipe,
   ],
 })
-export class LoginPage implements OnInit {
+export class LoginPage implements OnInit, AfterViewInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -85,6 +90,57 @@ export class LoginPage implements OnInit {
 
   ngOnInit(): void {
     console.log('[LoginPage] initialized');
+  }
+
+  ngAfterViewInit(): void {
+    console.log('[LoginPage] ngAfterViewInit');
+    this.dumpDebug('afterViewInit');
+    setTimeout(() => this.dumpDebug('afterViewInit+1500ms'), 1500);
+  }
+
+  ionViewWillEnter(): void {
+    console.log('[LoginPage] ionViewWillEnter');
+  }
+
+  ionViewDidEnter(): void {
+    console.log('[LoginPage] ionViewDidEnter');
+    this.dumpDebug('ionViewDidEnter');
+  }
+
+  private dumpDebug(tag: string): void {
+    try {
+      const count = (sel: string): number => document.querySelectorAll(sel).length;
+      console.log(`[Debug ${tag}] url=${location.href}`);
+      console.log(`[Debug ${tag}] body.innerHTML length=${document.body.innerHTML.length}`);
+      console.log(
+        `[Debug ${tag}] counts ion-app=${count('ion-app')} ion-router-outlet=${count(
+          'ion-router-outlet',
+        )} ion-content=${count('ion-content')} app-login=${count('app-login')} app-auth-shell=${count(
+          'app-auth-shell',
+        )}`,
+      );
+      const dump = (sel: string): void => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) {
+          console.log(`[Debug ${tag}] ${sel} = NOT FOUND`);
+          return;
+        }
+        const cs = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        console.log(
+          `[Debug ${tag}] ${sel} class="${el.className}" display=${cs.display} visibility=${cs.visibility} opacity=${cs.opacity} height=${cs.height} width=${cs.width} rect=${Math.round(
+            rect.width,
+          )}x${Math.round(rect.height)} bg=${cs.backgroundColor} color=${cs.color} zIndex=${cs.zIndex}`,
+        );
+      };
+      dump('ion-app');
+      dump('ion-router-outlet');
+      dump('app-login');
+      dump('app-auth-shell');
+      dump('ion-content');
+    } catch (err) {
+      console.error(`[Debug ${tag}] failed`, err);
+    }
   }
 
   async submit(): Promise<void> {
