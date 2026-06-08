@@ -22,18 +22,33 @@ export class AuthService {
 
   private async restoreSession(): Promise<void> {
     if (!this.supabase.isConfigured) {
+      console.warn('[Auth] Supabase not configured; skipping session restore');
       this.initialized.set(true);
       return;
     }
 
-    const { data } = await this.supabase.client.auth.getSession();
-    this.currentUser.set(data.session?.user ?? null);
+    console.log('[Auth] Restoring session...');
+    try {
+      const { data, error } = await this.supabase.client.auth.getSession();
+      if (error) {
+        console.error('[Auth] getSession returned an error', error);
+      }
+      this.currentUser.set(data.session?.user ?? null);
+      console.log(`[Auth] Session restored (authenticated=${Boolean(data.session)})`);
 
-    this.supabase.client.auth.onAuthStateChange((_event, session) => {
-      this.currentUser.set(session?.user ?? null);
-    });
-
-    this.initialized.set(true);
+      this.supabase.client.auth.onAuthStateChange((event, session) => {
+        console.log(`[Auth] onAuthStateChange: ${event} (authenticated=${Boolean(session)})`);
+        this.currentUser.set(session?.user ?? null);
+      });
+    } catch (err) {
+      // Never let an auth-init failure reject ensureInitialized(): the route guards
+      // await it, so a thrown error here would leave the app stuck with no active route.
+      console.error('[Auth] Failed to restore session', err);
+      this.currentUser.set(null);
+    } finally {
+      this.initialized.set(true);
+      console.log('[Auth] Initialization complete');
+    }
   }
 
   get userId(): string | null {
