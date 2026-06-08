@@ -1,8 +1,8 @@
 import { AfterViewInit, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { IonButton, IonInput } from '@ionic/angular/standalone';
-import { TranslatePipe } from '@ngx-translate/core';
+import { IonButton, IonContent, IonInput } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
@@ -18,39 +18,15 @@ import { describeError } from '../../../../shared/utils';
     >
       LOGIN PAGE VISIBLE
     </div>
-    <app-auth-shell
-      [title]="'auth.login.title' | translate"
-      [subtitle]="'auth.login.subtitle' | translate"
-      [configured]="configured"
-    >
-      <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
-        <ion-input
-          fill="outline"
-          [label]="'auth.email' | translate"
-          labelPlacement="stacked"
-          type="email"
-          autocomplete="email"
-          formControlName="email"
-        ></ion-input>
-        <ion-input
-          fill="outline"
-          [label]="'auth.password' | translate"
-          labelPlacement="stacked"
-          type="password"
-          autocomplete="current-password"
-          formControlName="password"
-        ></ion-input>
-        <app-submit-button
-          [label]="'auth.login.signIn' | translate"
-          type="submit"
-          [loading]="loading()"
-          [disabled]="form.invalid || !configured"
-        ></app-submit-button>
-      </form>
-
-      <ion-button expand="block" fill="clear" routerLink="/register">{{ 'auth.login.createAccount' | translate }}</ion-button>
-      <ion-button expand="block" fill="clear" routerLink="/forgot-password">{{ 'auth.login.forgot' | translate }}</ion-button>
-    </app-auth-shell>
+    <!-- TEMP DIAGNOSTIC TEMPLATE: minimal static Ionic page to isolate ion-content rendering. -->
+    <ion-content>
+      <div style="padding: 32px; color: #111; background: #fff; min-height: 100vh">
+        <h1>Login</h1>
+        <p>This is the real login page content.</p>
+        <input placeholder="Email" style="display:block; margin:16px 0; padding:12px; width:100%" />
+        <button style="padding:12px 16px">Continue</button>
+      </div>
+    </ion-content>
   `,
   styles: [
     `
@@ -65,6 +41,7 @@ import { describeError } from '../../../../shared/utils';
   imports: [
     ReactiveFormsModule,
     RouterLink,
+    IonContent,
     IonInput,
     IonButton,
     AuthShellComponent,
@@ -79,6 +56,7 @@ export class LoginPage implements OnInit, AfterViewInit {
   private readonly preferences = inject(PreferencesService);
   private readonly feedback = inject(FeedbackService);
   private readonly supabase = inject(SupabaseService);
+  private readonly translate = inject(TranslateService);
 
   readonly loading = signal(false);
   readonly configured = this.supabase.isConfigured;
@@ -90,6 +68,13 @@ export class LoginPage implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     console.log('[LoginPage] initialized');
+    console.log(`[LoginPage] form initialized status=${this.form.status} valid=${this.form.valid}`);
+    console.log(`[LoginPage] loading=${this.loading()} configured=${this.configured}`);
+    console.log(
+      `[LoginPage] translations lang=${this.translate.currentLang} title="${this.translate.instant(
+        'auth.login.title',
+      )}"`,
+    );
   }
 
   ngAfterViewInit(): void {
