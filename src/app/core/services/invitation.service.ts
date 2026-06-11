@@ -1,18 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { RoomRole } from '../models';
+import { InvitationStatus, PendingInvitation, RoomInvitation, RoomRole } from '../models';
 import { AuthService } from '../auth/auth.service';
 import { SupabaseService } from './supabase.service';
-
-export interface InvitationPreview {
-  roomId: string;
-  roomName: string;
-  inviter: string;
-  role: RoomRole;
-  expired: boolean;
-  accepted: boolean;
-}
-
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable({
   providedIn: 'root',
@@ -25,73 +14,113 @@ export class InvitationService {
     return this.supabase.client;
   }
 
-  async createInvitation(roomId: string, email: string, role: RoomRole): Promise<string> {
+  async createInvitation(roomId: string, email: string, role: RoomRole): Promise<void> {
     const userId = this.auth.userId;
     if (!userId) {
       throw new Error('NOT_AUTHENTICATED');
     }
 
-    const { data, error } = await this.client
-      .from('room_invitations')
-      .insert({
-        room_id: roomId,
-        email: email.trim(),
-        role,
-        invited_by: userId,
-        expires_at: new Date(Date.now() + SEVEN_DAYS_MS).toISOString(),
-      })
-      .select('token')
-      .single();
+    const { error } = await this.client.from('room_invitations').insert({
+      room_id: roomId,
+      email: email.trim(),
+      role,
+      invited_by: userId,
+      status: 'pending',
+    });
 
     if (error) {
       throw error;
     }
-
-    return (data as { token: string }).token;
   }
 
-  async getPreview(token: string): Promise<InvitationPreview | null> {
-    const { data, error } = await this.client.rpc('get_invitation_preview', { p_token: token });
+  async listMyPendingInvitations(): Promise<PendingInvitation[]> {
+    const { data, error } = await this.client.rpc('list_my_pending_invitations');
+
     if (error) {
       throw error;
     }
 
-    const row = (Array.isArray(data) ? data[0] : data) as
-      | {
-          room_id: string;
-          room_name: string;
-          inviter: string;
-          role: RoomRole;
-          expired: boolean;
-          accepted: boolean;
-        }
-      | undefined;
+    const rows = (data ?? []) as Array<{
+      id: string;
+      room_id: string;
+      room_name: string;
+      role: RoomRole;
+      invited_by_name: string;
+      status: InvitationStatus;
+      created_at: string;
+    }>;
 
-    if (!row) {
-      return null;
-    }
-
-    return {
+    return rows.map((row) => ({
+      id: row.id,
       roomId: row.room_id,
       roomName: row.room_name,
-      inviter: row.inviter,
       role: row.role,
-      expired: row.expired,
-      accepted: row.accepted,
-    };
+      invitedByName: row.invited_by_name,
+      status: row.status,
+      createdAt: row.created_at,
+    }));
   }
 
-  async accept(token: string): Promise<string> {
-    const { data, error } = await this.client.rpc('accept_invitation', { p_token: token });
+  async acceptInvitation(invitationId: string): Promise<string> {
+    const { data, error } = await this.client.rpc('accept_pending_invitation', {
+      p_invitation_id: invitationId,
+    });
     if (error) {
       throw error;
     }
     return data as string;
   }
 
-  buildInviteLink(token: string): string {
-    const origin =
-      typeof window !== 'undefined' && window.location ? window.location.origin : 'https://app';
-    return `${origin}/invite?token=${token}`;
+  async rejectInvitation(invitationId: string): Promise<void> {
+    const { error } = await this.client.rpc('reject_pending_invitation', {
+      p_invitation_id: invitationId,
+    });
+    if (error) {
+      throw error;
+    }
+  }
+
+  async listRoomInvitations(roomId: string): Promise<RoomInvitation[]> {
+    const { data, error } = await this.client.rpc('list_room_invitations', {
+      p_room_id: roomId,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = (data ?? []) as Array<{
+      id: string;
+      email: string;
+      role: RoomRole;
+      status: InvitationStatus;
+      invited_by: string;
+      accepted_by: string | null;
+      created_at: string;
+      accepted_at: string | null;
+    }>;
+
+    return rows.map((row) => ({
+      id: row.id,
+      roomId,
+      email: row.email,
+      role: row.role,
+      status: row.status,
+      invitedBy: row.invited_by,
+      acceptedBy: row.accepted_by ?? undefined,
+      acceptedAt: row.accepted_at ?? undefined,
+      createdAt: row.created_at,
+    }));
+  }
+
+  async deleteInvitation(invitationId: string): Promise<void> {
+    const { error } = await this.client
+      .from('room_invitations')
+      .delete()
+      .eq('id', invitationId);
+
+    if (error) {
+      throw error;
+    }
   }
 }

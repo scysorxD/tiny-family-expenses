@@ -37,8 +37,6 @@ export class AuthService {
         this.currentUser.set(session?.user ?? null);
       });
     } catch (err) {
-      // Never let an auth-init failure reject ensureInitialized(): the route guards
-      // await it, so a thrown error here would leave the app stuck with no active route.
       console.error('Failed to restore session', err);
       this.currentUser.set(null);
     } finally {
@@ -54,6 +52,12 @@ export class AuthService {
     return this.currentUser() !== null;
   }
 
+  isEmailVerified(): boolean {
+    const user = this.currentUser();
+    if (!user) return false;
+    return user.email_confirmed_at != null;
+  }
+
   async signUp(email: string, password: string, displayName?: string): Promise<void> {
     const { data, error } = await this.supabase.client.auth.signUp({
       email,
@@ -65,7 +69,34 @@ export class AuthService {
       throw error;
     }
 
+    // After signup with "Confirm email" enabled, there is no session yet.
+    // The user must verify their email via OTP before getting a session.
     this.currentUser.set(data.session?.user ?? data.user ?? null);
+  }
+
+  async verifyEmailOtp(email: string, token: string): Promise<void> {
+    const { data, error } = await this.supabase.client.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    this.currentUser.set(data.session?.user ?? data.user ?? null);
+  }
+
+  async resendVerification(email: string): Promise<void> {
+    const { error } = await this.supabase.client.auth.resend({
+      type: 'signup',
+      email,
+    });
+
+    if (error) {
+      throw error;
+    }
   }
 
   async signIn(email: string, password: string): Promise<void> {

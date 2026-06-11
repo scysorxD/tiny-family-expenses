@@ -95,6 +95,12 @@ export class LoginPage {
     try {
       const { email, password } = this.form.getRawValue();
       await this.auth.signIn(email, password);
+
+      if (!this.auth.isEmailVerified()) {
+        await this.router.navigateByUrl(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
+
       const lastRoom = await this.preferences.getLastRoomId();
       await this.router.navigateByUrl(lastRoom ? `/rooms/${lastRoom}` : '/rooms');
     } catch (error) {

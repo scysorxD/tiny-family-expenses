@@ -9,11 +9,14 @@ import {
   IonIcon,
   IonRefresher,
   IonRefresherContent,
+  IonSpinner,
 } from '@ionic/angular/standalone';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { LanguageService } from '../../../../core/i18n';
+import { PendingInvitation } from '../../../../core/models';
 import { FeedbackService } from '../../../../core/services/feedback.service';
+import { InvitationService } from '../../../../core/services/invitation.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { RoomMembership } from '../../../../data/remote/supabase.mappers';
@@ -44,13 +47,44 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
         @if (loading()) {
           <app-skeleton variant="list" [rows]="3"></app-skeleton>
         } @else {
+          @if (pendingInvitations().length > 0) {
+            <h2 class="section-title">{{ 'rooms.invitations.pendingTitle' | translate }}</h2>
+            <div class="invitations">
+              @for (inv of pendingInvitations(); track inv.id) {
+                <div class="invite-banner app-card">
+                  <span class="invite-icon"><ion-icon name="mail-outline"></ion-icon></span>
+                  <span class="invite-info">
+                    <span class="invite-room">{{ inv.roomName }}</span>
+                    <span class="label-muted">{{ 'rooms.invitations.invitedAs' | translate: { inviter: inv.invitedByName, role: 'role.' + inv.role | translate } }}</span>
+                  </span>
+                  <div class="invite-actions">
+                    @if (accepting() === inv.id) {
+                      <ion-spinner name="dots" class="inline-spinner"></ion-spinner>
+                    } @else {
+                      <ion-button fill="solid" size="small" color="primary" (click)="acceptInvite(inv)">
+                        {{ 'rooms.invitations.accept' | translate }}
+                      </ion-button>
+                    }
+                    @if (rejecting() === inv.id) {
+                      <ion-spinner name="dots" class="inline-spinner"></ion-spinner>
+                    } @else {
+                      <ion-button fill="outline" size="small" color="medium" (click)="rejectInvite(inv)">
+                        {{ 'rooms.invitations.reject' | translate }}
+                      </ion-button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
           <h2 class="section-title">{{ 'rooms.list.myRooms' | translate }}</h2>
           @if (rooms().length === 0) {
             <app-empty-state
               icon="home-outline"
-              [title]="'rooms.list.emptyTitle' | translate"
-              [message]="'rooms.list.emptyMessage' | translate"
-              [actionLabel]="'rooms.list.createRoom' | translate"
+              [title]="pendingInvitations().length > 0 ? ('rooms.invitations.noRoomsYet' | translate) : ('rooms.list.emptyTitle' | translate)"
+              [message]="pendingInvitations().length > 0 ? ('rooms.invitations.acceptAbove' | translate) : ('rooms.list.emptyMessage' | translate)"
+              [actionLabel]="pendingInvitations().length > 0 ? '' : ('rooms.list.createRoom' | translate)"
               (action)="create()"
             ></app-empty-state>
           } @else {
@@ -126,6 +160,54 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
       }
       .avatar ion-icon {
         font-size: 1.9rem;
+      }
+      .invitations {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .invite-banner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+      }
+      .invite-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: var(--app-primary-soft);
+        color: var(--app-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .invite-icon ion-icon {
+        font-size: 1.4rem;
+      }
+      .invite-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+      }
+      .invite-room {
+        font-weight: 700;
+        font-size: 1rem;
+      }
+      .invite-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        width: 100%;
+        margin-top: 4px;
+      }
+      .inline-spinner {
+        width: 20px;
+        height: 20px;
       }
       .rooms {
         display: flex;
@@ -206,6 +288,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
     IonFabButton,
     IonRefresher,
     IonRefresherContent,
+    IonSpinner,
     AppSkeletonComponent,
     EmptyStateComponent,
     StatusPillComponent,
@@ -214,6 +297,7 @@ import { describeError, monthLabel, toMonthKey } from '../../../../shared/utils'
 })
 export class RoomListPage {
   private readonly roomService = inject(RoomService);
+  private readonly invitationService = inject(InvitationService);
   private readonly auth = inject(AuthService);
   private readonly preferences = inject(PreferencesService);
   private readonly feedback = inject(FeedbackService);
@@ -223,8 +307,11 @@ export class RoomListPage {
   private readonly language = inject(LanguageService);
 
   readonly rooms = signal<RoomMembership[]>([]);
+  readonly pendingInvitations = signal<PendingInvitation[]>([]);
   readonly loading = signal(true);
   readonly lastRoomId = signal<string | null>(null);
+  readonly accepting = signal<string | null>(null);
+  readonly rejecting = signal<string | null>(null);
 
   readonly currentMonth = monthLabel(toMonthKey(new Date()), this.language.locale);
   readonly tabRoomId = computed(() => this.lastRoomId() ?? this.rooms()[0]?.room.id ?? null);
@@ -261,7 +348,12 @@ export class RoomListPage {
       this.loading.set(true);
     }
     try {
-      this.rooms.set(await this.roomService.listMyRooms());
+      const [rooms, invitations] = await Promise.all([
+        this.roomService.listMyRooms(),
+        this.invitationService.listMyPendingInvitations(),
+      ]);
+      this.rooms.set(rooms);
+      this.pendingInvitations.set(invitations);
     } catch (error) {
       await this.feedback.error(describeError(error));
     } finally {
@@ -286,6 +378,33 @@ export class RoomListPage {
   quickAdd(): void {
     const roomId = this.tabRoomId();
     void this.router.navigateByUrl(roomId ? `/rooms/${roomId}` : '/rooms/new');
+  }
+
+  async acceptInvite(inv: PendingInvitation): Promise<void> {
+    this.accepting.set(inv.id);
+    try {
+      const roomId = await this.invitationService.acceptInvitation(inv.id);
+      await this.preferences.setLastRoomId(roomId);
+      await this.feedback.success(this.translate.instant('rooms.invitations.accepted'));
+      await this.load(false);
+    } catch (error) {
+      await this.feedback.error(describeError(error));
+    } finally {
+      this.accepting.set(null);
+    }
+  }
+
+  async rejectInvite(inv: PendingInvitation): Promise<void> {
+    this.rejecting.set(inv.id);
+    try {
+      await this.invitationService.rejectInvitation(inv.id);
+      await this.feedback.success(this.translate.instant('rooms.invitations.rejected'));
+      await this.load(false);
+    } catch (error) {
+      await this.feedback.error(describeError(error));
+    } finally {
+      this.rejecting.set(null);
+    }
   }
 
   async openMenu(): Promise<void> {

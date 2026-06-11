@@ -11,17 +11,26 @@ export const authGuard: CanActivateFn = async () => {
   return auth.isAuthenticated() ? true : router.createUrlTree(['/login']);
 };
 
+export const verifiedGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  await auth.ensureInitialized();
+  if (!auth.isAuthenticated()) return router.createUrlTree(['/login']);
+  if (!auth.isEmailVerified()) return router.createUrlTree(['/verify-email']);
+  return true;
+};
+
 export const publicOnlyGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
   await auth.ensureInitialized();
-  return auth.isAuthenticated() ? router.createUrlTree(['/rooms']) : true;
+  if (!auth.isAuthenticated()) return true;
+  if (!auth.isEmailVerified()) return router.createUrlTree(['/verify-email']);
+  return router.createUrlTree(['/rooms']);
 };
 
-// Resolves the landing destination as a UrlTree so ion-router-outlet mounts the
-// final page directly (login or rooms) instead of mounting EntryPage and then
-// redirecting in ngOnInit, which can leave the native outlet blank.
 export const entryRedirectGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const preferences = inject(PreferencesService);
@@ -31,6 +40,10 @@ export const entryRedirectGuard: CanActivateFn = async () => {
 
   if (!auth.isAuthenticated()) {
     return router.createUrlTree(['/login']);
+  }
+
+  if (!auth.isEmailVerified()) {
+    return router.createUrlTree(['/verify-email']);
   }
 
   let lastRoom: string | null = null;

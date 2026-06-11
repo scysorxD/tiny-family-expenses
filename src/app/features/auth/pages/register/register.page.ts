@@ -101,11 +101,12 @@ export class RegisterPage {
       const { email, password, displayName } = this.form.getRawValue();
       await this.auth.signUp(email, password, displayName);
 
-      if (this.auth.isAuthenticated()) {
+      if (this.auth.isEmailVerified()) {
+        // Auto-confirmed (e.g. email confirmation disabled in Supabase)
         await this.router.navigateByUrl('/rooms');
       } else {
-        await this.feedback.success(this.translate.instant('auth.register.emailConfirm'));
-        await this.router.navigateByUrl('/login');
+        // Navigate to verify-email screen with email as query param
+        await this.router.navigateByUrl(`/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       await this.feedback.error(describeError(error));

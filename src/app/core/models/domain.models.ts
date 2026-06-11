@@ -111,15 +111,26 @@ export interface UserPreferences {
   lastRoomId?: string;
 }
 
+export type InvitationStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface PendingInvitation {
+  id: string;
+  roomId: string;
+  roomName: string;
+  role: RoomRole;
+  invitedByName: string;
+  status: InvitationStatus;
+  createdAt: string;
+}
+
 export interface RoomInvitation {
   id: string;
   roomId: string;
   email: string;
   role: RoomRole;
-  token: string;
+  status: InvitationStatus;
   invitedBy: string;
   acceptedBy?: string;
   acceptedAt?: string;
-  expiresAt?: string;
   createdAt: string;
 }
