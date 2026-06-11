@@ -155,16 +155,26 @@ returns table (
   created_at timestamptz,
   accepted_at timestamptz
 )
-language sql
+language plpgsql
 security definer
 set search_path = public
 stable
 as $$
+begin
+  if auth.uid() is null then
+    raise exception 'NOT_AUTHENTICATED';
+  end if;
+  if not public.is_room_admin(p_room_id) then
+    raise exception 'NOT_ROOM_ADMIN';
+  end if;
+
+  return query
   select i.id, i.email, i.role, i.status, i.invited_by, i.accepted_by,
     i.created_at, i.accepted_at
   from public.room_invitations i
   where i.room_id = p_room_id
   order by i.created_at desc;
+end;
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -174,7 +184,3 @@ grant execute on function public.list_my_pending_invitations() to authenticated;
 grant execute on function public.accept_pending_invitation(uuid) to authenticated;
 grant execute on function public.reject_pending_invitation(uuid) to authenticated;
 grant execute on function public.list_room_invitations(uuid) to authenticated;
-
--- Revoke grants on dropped functions (no-op if already gone, but safe)
-revoke execute on function public.get_invitation_preview(uuid) from authenticated;
-revoke execute on function public.accept_invitation(uuid) from authenticated;
