@@ -6,6 +6,7 @@ import {
   IonContent,
   IonIcon,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Category } from '../../../../core/models';
 import { CategoryService } from '../../../../core/services/category.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
@@ -20,7 +21,7 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-category-list',
   template: `
-    <app-page-header title="Categories" [defaultHref]="backHref">
+    <app-page-header [title]="'categories.title' | translate" [defaultHref]="backHref">
       <ion-buttons slot="end" end>
         <ion-button (click)="create()">
           <ion-icon slot="icon-only" name="add"></ion-icon>
@@ -35,9 +36,9 @@ import { describeError } from '../../../../shared/utils';
           @if (categories().length === 0) {
             <app-empty-state
               icon="pricetag-outline"
-              title="No categories yet"
-              message="Add categories like Food, Transport or Medicine to organize expenses."
-              actionLabel="Add category"
+              [title]="'categories.emptyTitle' | translate"
+              [message]="'categories.emptyMessage' | translate"
+              [actionLabel]="'categories.addAction' | translate"
               (action)="create()"
             ></app-empty-state>
           } @else {
@@ -62,12 +63,14 @@ import { describeError } from '../../../../shared/utils';
     ManagedListComponent,
     AppSkeletonComponent,
     EmptyStateComponent,
+    TranslatePipe,
   ],
 })
 export class CategoryListPage {
   private readonly route = inject(ActivatedRoute);
   private readonly categoryService = inject(CategoryService);
   private readonly feedback = inject(FeedbackService);
+  private readonly translate = inject(TranslateService);
 
   readonly categories = signal<Category[]>([]);
   readonly loading = signal(true);
@@ -96,7 +99,11 @@ export class CategoryListPage {
   }
 
   async create(): Promise<void> {
-    const name = await this.feedback.prompt('New category', '', 'e.g. Medicine');
+    const name = await this.feedback.prompt(
+      this.translate.instant('categories.newTitle'),
+      '',
+      this.translate.instant('categories.newPlaceholder'),
+    );
     if (!name) {
       return;
     }
@@ -109,7 +116,7 @@ export class CategoryListPage {
   }
 
   async rename(category: ManagedListItem): Promise<void> {
-    const name = await this.feedback.prompt('Rename category', category.name);
+    const name = await this.feedback.prompt(this.translate.instant('categories.renameTitle'), category.name);
     if (!name || name === category.name) {
       return;
     }
@@ -132,16 +139,16 @@ export class CategoryListPage {
 
   async remove(category: ManagedListItem): Promise<void> {
     const confirmed = await this.feedback.confirm(
-      'Delete category',
-      `Delete "${category.name}"? Categories with expenses cannot be deleted.`,
-      'Delete',
+      this.translate.instant('categories.deleteTitle'),
+      this.translate.instant('categories.deleteMessage', { name: category.name }),
+      this.translate.instant('common.delete'),
     );
     if (!confirmed) {
       return;
     }
     try {
       await this.categoryService.deleteCategory(category.id);
-      await this.feedback.success('Category deleted');
+      await this.feedback.success(this.translate.instant('categories.deleted'));
       await this.load();
     } catch (error) {
       await this.feedback.error(describeError(error));

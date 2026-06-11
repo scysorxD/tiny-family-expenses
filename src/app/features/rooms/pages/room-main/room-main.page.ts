@@ -16,6 +16,7 @@ import {
   IonRefresher,
   IonRefresherContent,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Beneficiary, Category, Expense, PeriodStatus, Room, RoomRole } from '../../../../core/models';
 import { BeneficiaryService } from '../../../../core/services/beneficiary.service';
 import { CategoryService } from '../../../../core/services/category.service';
@@ -36,12 +37,13 @@ import {
   StatusPillComponent,
   StatusTone,
 } from '../../../../shared/ui';
+import { LanguageService } from '../../../../core/i18n';
 import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../../../shared/utils';
 
 @Component({
   selector: 'app-room-main',
   template: `
-    <app-page-header [title]="room()?.name ?? 'Room'" defaultHref="/rooms">
+    <app-page-header [title]="room()?.name ?? ('common.room' | translate)" defaultHref="/rooms">
       <ion-buttons slot="end" end>
         @if (sync.syncing() || sync.pending() > 0) {
           <ion-button (click)="syncNow()">
@@ -69,7 +71,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
           <div class="month-row">{{ label() }}</div>
 
           <div class="hero-card">
-            <p class="label-muted">Total paid</p>
+            <p class="label-muted">{{ 'rooms.main.totalPaid' | translate }}</p>
             <div class="amount-hero">{{ format(total()) }}</div>
             <div class="hero-pills">
               <app-status-pill
@@ -81,7 +83,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
                 <app-status-pill
                   class="pill-link"
                   (click)="go('sync')"
-                  [label]="sync.pending() + ' to sync'"
+                  [label]="'rooms.main.toSync' | translate: { count: sync.pending() }"
                   tone="warning"
                   icon="cloud-offline-outline"
                 ></app-status-pill>
@@ -90,7 +92,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
                 <app-status-pill
                   class="pill-link"
                   (click)="go('sync')"
-                  [label]="sync.conflicts() + ' conflict'"
+                  [label]="'rooms.main.conflict' | translate: { count: sync.conflicts() }"
                   tone="danger"
                   icon="warning-outline"
                 ></app-status-pill>
@@ -114,10 +116,10 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
           </div> -->
 
           <div class="section-head">
-            <span class="section-title">Latest expenses</span>
+            <span class="section-title">{{ 'common.latestExpenses' | translate }}</span>
             @if (expenses().length > 0) {
               <span class="link-action" (click)="go('summary')">
-                View all <ion-icon name="chevron-forward"></ion-icon>
+                {{ 'common.viewAll' | translate }} <ion-icon name="chevron-forward"></ion-icon>
               </span>
             }
           </div>
@@ -125,9 +127,9 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
           @if (expenses().length === 0) {
             <app-empty-state
               icon="receipt-outline"
-              title="No expenses yet"
-              message="Tap + to add your first expense for this month."
-              actionLabel="Add expense"
+              [title]="'rooms.main.emptyTitle' | translate"
+              [message]="'rooms.main.emptyMessage' | translate"
+              [actionLabel]="'common.addExpense' | translate"
               (action)="addExpense()"
             ></app-empty-state>
           } @else {
@@ -210,6 +212,7 @@ import { describeError, formatRoomAmount, monthLabel, toMonthKey } from '../../.
     CategoryIconComponent,
     EmptyStateComponent,
     StatusPillComponent,
+    TranslatePipe,
   ],
 })
 export class RoomMainPage {
@@ -225,6 +228,8 @@ export class RoomMainPage {
   private readonly modalController = inject(ModalController);
   private readonly actionSheet = inject(ActionSheetController);
   private readonly realtime = inject(RealtimeService);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
   readonly sync = inject(SyncQueueService);
 
   private realtimeOff?: () => void;
@@ -239,7 +244,7 @@ export class RoomMainPage {
   readonly loading = signal(true);
 
   readonly monthKey = signal(toMonthKey(new Date()));
-  readonly label = computed(() => monthLabel(this.monthKey()));
+  readonly label = computed(() => monthLabel(this.monthKey(), this.language.locale));
   readonly total = computed(() =>
     this.expenses().reduce((sum, expense) => sum + expense.amount, 0),
   );
@@ -294,7 +299,7 @@ export class RoomMainPage {
   }
 
   categoryName(categoryId: string): string {
-    return this.categoryMap().get(categoryId) ?? 'Category';
+    return this.categoryMap().get(categoryId) ?? this.translate.instant('common.category');
   }
 
   beneficiaryNames(expense: Expense): string {
@@ -304,7 +309,7 @@ export class RoomMainPage {
   }
 
   statusLabel(): string {
-    return this.status().replace('_', ' ');
+    return this.translate.instant('status.' + this.status());
   }
 
   statusTone(): StatusTone {
@@ -342,7 +347,7 @@ export class RoomMainPage {
 
   async edit(expense: Expense): Promise<void> {
     if (this.status() !== 'open') {
-      await this.feedback.error('This month is closed. Expenses cannot be edited.');
+      await this.feedback.error(this.translate.instant('rooms.main.monthClosedEdit'));
       return;
     }
 
@@ -366,29 +371,30 @@ export class RoomMainPage {
     switch (expense.syncStatus) {
       case 'pending_sync':
       case 'syncing':
-        return { label: 'pending', tone: 'muted' };
+        return { label: this.translate.instant('rooms.main.badgePending'), tone: 'muted' };
       case 'sync_failed':
-        return { label: 'retry', tone: 'warning' };
+        return { label: this.translate.instant('rooms.main.badgeRetry'), tone: 'warning' };
       case 'conflict':
-        return { label: 'conflict', tone: 'danger' };
+        return { label: this.translate.instant('rooms.main.badgeConflict'), tone: 'danger' };
       default:
         return null;
     }
   }
 
   async openMore(): Promise<void> {
+    const t = (key: string): string => this.translate.instant(key);
     const buttons: ActionSheetButton[] = [
-      { text: 'Dashboard', icon: 'stats-chart-outline', handler: () => this.go('dashboard') },
-      { text: 'Sync status', icon: 'sync-outline', handler: () => this.go('sync') },
-      { text: 'Members', icon: 'people-outline', handler: () => this.go('members') },
-      { text: 'Beneficiaries', icon: 'person-outline', handler: () => this.go('beneficiaries') },
-      { text: 'Payers', icon: 'wallet-outline', handler: () => this.go('payers') },
+      { text: t('nav.dashboard'), icon: 'stats-chart-outline', handler: () => this.go('dashboard') },
+      { text: t('nav.syncStatus'), icon: 'sync-outline', handler: () => this.go('sync') },
+      { text: t('nav.members'), icon: 'people-outline', handler: () => this.go('members') },
+      { text: t('nav.beneficiaries'), icon: 'person-outline', handler: () => this.go('beneficiaries') },
+      { text: t('nav.payers'), icon: 'wallet-outline', handler: () => this.go('payers') },
     ];
     if (this.role() === 'admin') {
-      buttons.push({ text: 'Room settings', icon: 'settings-outline', handler: () => this.go('settings') });
+      buttons.push({ text: t('nav.settings'), icon: 'settings-outline', handler: () => this.go('settings') });
     }
-    buttons.push({ text: 'Cancel', role: 'cancel' });
-    const sheet = await this.actionSheet.create({ header: 'More', buttons });
+    buttons.push({ text: t('common.cancel'), role: 'cancel' });
+    const sheet = await this.actionSheet.create({ header: t('tabs.more'), buttons });
     await sheet.present();
   }
 

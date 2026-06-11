@@ -26,14 +26,21 @@ export class EntryPage implements OnInit {
   private readonly router = inject(Router);
 
   async ngOnInit(): Promise<void> {
-    await this.auth.ensureInitialized();
+    // The entryRedirectGuard normally resolves the destination before this page
+    // mounts; this remains as a defensive fallback so we never stay on a spinner.
+    try {
+      await this.auth.ensureInitialized();
 
-    if (!this.auth.isAuthenticated()) {
+      if (!this.auth.isAuthenticated()) {
+        await this.router.navigateByUrl('/login');
+        return;
+      }
+
+      const lastRoom = await this.preferences.getLastRoomId();
+      await this.router.navigateByUrl(lastRoom ? `/rooms/${lastRoom}` : '/rooms');
+    } catch (err) {
+      console.error('Entry redirect failed', err);
       await this.router.navigateByUrl('/login');
-      return;
     }
-
-    const lastRoom = await this.preferences.getLastRoomId();
-    await this.router.navigateByUrl(lastRoom ? `/rooms/${lastRoom}` : '/rooms');
   }
 }

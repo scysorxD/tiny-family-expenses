@@ -6,6 +6,7 @@ import {
   IonIcon,
   IonSpinner,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { InvitationPreview, InvitationService } from '../../../../core/services/invitation.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
@@ -15,24 +16,29 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-accept-invite',
   template: `
-    <app-page-header title="Join room"></app-page-header>
+    <app-page-header [title]="'rooms.invite.title' | translate"></app-page-header>
     <ion-content>
       <div class="page-pad">
         @if (loading()) {
           <div class="center-pad"><ion-spinner></ion-spinner></div>
         } @else if (!preview()) {
-          <div class="app-card text-muted">This invitation link is invalid.</div>
-          <ion-button class="spaced" expand="block" fill="clear" (click)="goRooms()">Go to my rooms</ion-button>
+          <div class="app-card text-muted">{{ 'rooms.invite.invalid' | translate }}</div>
+          <ion-button class="spaced" expand="block" fill="clear" (click)="goRooms()">{{ 'rooms.invite.goToRooms' | translate }}</ion-button>
         } @else {
           <div class="app-card invite-card">
             <span class="invite-icon"><ion-icon name="home-outline"></ion-icon></span>
             <h2 class="invite-title">{{ preview()?.roomName }}</h2>
-            <p class="label-muted">{{ preview()?.inviter }} invited you as {{ preview()?.role }}.</p>
+            <p class="label-muted">
+              {{
+                'rooms.invite.invitedAs'
+                  | translate: { inviter: preview()?.inviter, role: 'role.' + (preview()?.role ?? 'guest') | translate }
+              }}
+            </p>
 
             @if (preview()?.expired) {
-              <span class="status-pill is-danger expiry">This invitation has expired</span>
+              <span class="status-pill is-danger expiry">{{ 'rooms.invite.expired' | translate }}</span>
             } @else if (preview()?.accepted) {
-              <span class="status-pill is-warning expiry">This invitation was already used</span>
+              <span class="status-pill is-warning expiry">{{ 'rooms.invite.alreadyUsed' | translate }}</span>
             }
           </div>
 
@@ -41,11 +47,11 @@ import { describeError } from '../../../../shared/utils';
               @if (accepting()) {
                 <ion-spinner name="dots"></ion-spinner>
               } @else {
-                Accept invitation
+                {{ 'rooms.invite.accept' | translate }}
               }
             </ion-button>
           }
-          <ion-button expand="block" fill="clear" (click)="goRooms()">Maybe later</ion-button>
+          <ion-button expand="block" fill="clear" (click)="goRooms()">{{ 'rooms.invite.maybeLater' | translate }}</ion-button>
         }
       </div>
     </ion-content>
@@ -82,7 +88,7 @@ import { describeError } from '../../../../shared/utils';
       }
     `,
   ],
-  imports: [IonContent, IonButton, IonIcon, IonSpinner, PageHeaderComponent],
+  imports: [IonContent, IonButton, IonIcon, IonSpinner, PageHeaderComponent, TranslatePipe],
 })
 export class AcceptInvitePage implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -90,6 +96,7 @@ export class AcceptInvitePage implements OnInit {
   private readonly invitationService = inject(InvitationService);
   private readonly preferences = inject(PreferencesService);
   private readonly feedback = inject(FeedbackService);
+  private readonly translate = inject(TranslateService);
 
   readonly preview = signal<InvitationPreview | null>(null);
   readonly loading = signal(true);
@@ -118,7 +125,7 @@ export class AcceptInvitePage implements OnInit {
     try {
       const roomId = await this.invitationService.accept(this.token);
       await this.preferences.setLastRoomId(roomId);
-      await this.feedback.success('You joined the room');
+      await this.feedback.success(this.translate.instant('rooms.invite.joined'));
       await this.router.navigate(['/rooms', roomId]);
     } catch (error) {
       await this.feedback.error(describeError(error));

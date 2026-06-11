@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent, IonInput } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
 import { RoomService } from '../../../../core/services/room.service';
@@ -15,22 +16,22 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-room-create',
   template: `
-    <app-page-header title="New room" defaultHref="/rooms"></app-page-header>
+    <app-page-header [title]="'rooms.create.title' | translate" defaultHref="/rooms"></app-page-header>
     <ion-content>
       <div class="page-pad">
-        <p class="label-muted intro">Create a room to track shared expenses with others.</p>
+        <p class="label-muted intro">{{ 'rooms.create.intro' | translate }}</p>
         <form [formGroup]="form" (ngSubmit)="submit()" class="form-stack">
           <ion-input
             fill="outline"
-            label="Room name"
+            [label]="'rooms.create.name' | translate"
             labelPlacement="stacked"
-            placeholder="Parents expenses"
+            [placeholder]="'rooms.create.namePlaceholder' | translate"
             formControlName="name"
           ></ion-input>
-          <app-currency-select formControlName="currency"></app-currency-select>
+          <app-currency-select [label]="'common.currency' | translate" formControlName="currency"></app-currency-select>
           <app-submit-button
             type="submit"
-            label="Create room"
+            [label]="'rooms.create.submit' | translate"
             [loading]="loading()"
             [disabled]="form.invalid"
           ></app-submit-button>
@@ -57,6 +58,7 @@ import { describeError } from '../../../../shared/utils';
     PageHeaderComponent,
     CurrencySelectComponent,
     SubmitButtonComponent,
+    TranslatePipe,
   ],
 })
 export class RoomCreatePage {
@@ -65,6 +67,7 @@ export class RoomCreatePage {
   private readonly preferences = inject(PreferencesService);
   private readonly feedback = inject(FeedbackService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   readonly loading = signal(false);
 
@@ -83,7 +86,7 @@ export class RoomCreatePage {
       const { name, currency } = this.form.getRawValue();
       const room = await this.roomService.createRoom(name, currency);
       await this.preferences.setLastRoomId(room.id);
-      await this.feedback.success('Room created');
+      await this.feedback.success(this.translate.instant('rooms.create.created'));
       await this.router.navigate(['/rooms', room.id]);
     } catch (error) {
       await this.feedback.error(describeError(error));

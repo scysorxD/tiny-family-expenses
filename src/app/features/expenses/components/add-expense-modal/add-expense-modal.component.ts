@@ -20,6 +20,7 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Beneficiary, Category, Expense } from '../../../../core/models';
 import { BeneficiaryService } from '../../../../core/services/beneficiary.service';
 import { CategoryService } from '../../../../core/services/category.service';
@@ -37,9 +38,9 @@ const BOTH = 'both';
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-button (click)="cancel()">Cancel</ion-button>
+          <ion-button (click)="cancel()">{{ 'common.cancel' | translate }}</ion-button>
         </ion-buttons>
-        <ion-title>{{ isEdit ? 'Edit expense' : 'Add expense' }}</ion-title>
+        <ion-title>{{ (isEdit ? 'expense.editTitle' : 'common.addExpense') | translate }}</ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content>
@@ -48,7 +49,7 @@ const BOTH = 'both';
       } @else {
         <div class="page-pad">
           <div class="amount-block">
-            <p class="label-muted">Amount</p>
+            <p class="label-muted">{{ 'expense.amount' | translate }}</p>
             <ion-input
               #amountInput
               class="amount-field"
@@ -61,7 +62,7 @@ const BOTH = 'both';
             <span class="currency-pill">{{ currency }}</span>
           </div>
 
-          <h2 class="field-label">Category</h2>
+          <h2 class="field-label">{{ 'common.category' | translate }}</h2>
           @if (suggested().length > 0) {
             <div class="cat-scroll">
               @for (cat of suggested(); track cat.id) {
@@ -79,7 +80,7 @@ const BOTH = 'both';
           }
           <ion-select
             fill="outline"
-            label="All categories"
+            [label]="'expense.allCategories' | translate"
             labelPlacement="stacked"
             [value]="selectedCategoryId()"
             (ionChange)="selectCategory($any($event).detail.value)"
@@ -93,24 +94,24 @@ const BOTH = 'both';
             <div class="create-row">
               <ion-input
                 fill="outline"
-                label="New category"
+                [label]="'categories.newTitle' | translate"
                 labelPlacement="stacked"
                 [(ngModel)]="newCategoryName"
-                placeholder="e.g. Pharmacy"
+                [placeholder]="'expense.newCategoryPlaceholder' | translate"
               ></ion-input>
-              <ion-button (click)="createCategory()">Add</ion-button>
+              <ion-button (click)="createCategory()">{{ 'common.add' | translate }}</ion-button>
             </div>
           } @else {
             <span class="link-action create-link" (click)="creatingCategory.set(true)">
-              <ion-icon name="add"></ion-icon> Create new category
+              <ion-icon name="add"></ion-icon> {{ 'expense.createCategory' | translate }}
             </span>
           }
 
           @if (beneficiaryMode() === 'two') {
-            <h2 class="field-label">Applies to</h2>
+            <h2 class="field-label">{{ 'expense.appliesTo' | translate }}</h2>
             <ion-segment [value]="twoSegmentValue()" (ionChange)="onTwoSegment($any($event).detail.value)">
               <ion-segment-button [value]="bothValue">
-                <ion-label>Both</ion-label>
+                <ion-label>{{ 'expense.both' | translate }}</ion-label>
               </ion-segment-button>
               @for (ben of beneficiaries(); track ben.id) {
                 <ion-segment-button [value]="ben.id">
@@ -119,7 +120,7 @@ const BOTH = 'both';
               }
             </ion-segment>
           } @else if (beneficiaryMode() === 'multi') {
-            <h2 class="field-label">Applies to</h2>
+            <h2 class="field-label">{{ 'expense.appliesTo' | translate }}</h2>
             <div class="chips">
               @for (ben of beneficiaries(); track ben.id) {
                 <ion-chip
@@ -132,31 +133,31 @@ const BOTH = 'both';
             </div>
           }
 
-          <h2 class="field-label">Date</h2>
+          <h2 class="field-label">{{ 'expense.date' | translate }}</h2>
           <ion-input fill="outline" type="date" [(ngModel)]="expenseDate"></ion-input>
 
-          <h2 class="field-label">Description (optional)</h2>
+          <h2 class="field-label">{{ 'expense.descriptionOptional' | translate }}</h2>
           <ion-textarea
             fill="outline"
             [(ngModel)]="description"
-            placeholder="Add a note..."
+            [placeholder]="'expense.notePlaceholder' | translate"
             autoGrow="true"
           ></ion-textarea>
 
           @if (beneficiaries().length === 0) {
-            <ion-note color="danger">This room has no active beneficiaries. Add one in settings.</ion-note>
+            <ion-note color="danger">{{ 'expense.noBeneficiaries' | translate }}</ion-note>
           }
 
           <ion-button class="save-btn" expand="block" (click)="save()" [disabled]="saving()">
             @if (saving()) {
               <ion-spinner name="dots"></ion-spinner>
             } @else {
-              Save expense
+              {{ 'expense.save' | translate }}
             }
           </ion-button>
           @if (!isEdit) {
             <ion-button expand="block" fill="outline" (click)="saveAndAddAnother()" [disabled]="saving()">
-              Save and add another
+              {{ 'expense.saveAndAddAnother' | translate }}
             </ion-button>
           }
         </div>
@@ -261,6 +262,7 @@ const BOTH = 'both';
     IonSpinner,
     IonNote,
     CategoryIconComponent,
+    TranslatePipe,
   ],
 })
 export class AddExpenseModalComponent implements OnInit {
@@ -275,6 +277,7 @@ export class AddExpenseModalComponent implements OnInit {
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
+  private readonly translate = inject(TranslateService);
 
   readonly categories = signal<Category[]>([]);
   readonly suggested = signal<Category[]>([]);
@@ -408,11 +411,11 @@ export class AddExpenseModalComponent implements OnInit {
     const amount = Number(this.amount);
 
     if (!categoryId) {
-      await this.feedback.error('Select a category.');
+      await this.feedback.error(this.translate.instant('expense.selectCategory'));
       return false;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      await this.feedback.error('Enter an amount greater than zero.');
+      await this.feedback.error(this.translate.instant('expense.amountPositive'));
       return false;
     }
 
@@ -423,7 +426,7 @@ export class AddExpenseModalComponent implements OnInit {
         : this.beneficiaries().map((ben) => ben.id);
 
     if (beneficiaryIds.length === 0) {
-      await this.feedback.error('This room has no active beneficiaries. Add one in settings.');
+      await this.feedback.error(this.translate.instant('expense.noBeneficiaries'));
       return false;
     }
 
@@ -458,7 +461,9 @@ export class AddExpenseModalComponent implements OnInit {
         });
       }
 
-      await this.feedback.success(this.isEdit ? 'Expense updated' : 'Expense saved');
+      await this.feedback.success(
+        this.translate.instant(this.isEdit ? 'expense.updated' : 'expense.saved'),
+      );
       return true;
     } catch (error) {
       await this.feedback.error(describeError(error));
@@ -483,14 +488,14 @@ export class AddExpenseModalComponent implements OnInit {
 
   private async handleClosedMonth(monthKey: string): Promise<boolean> {
     if (!this.isAdmin) {
-      await this.feedback.error('This month is already closed. You cannot add expenses.');
+      await this.feedback.error(this.translate.instant('expense.monthClosedGuest'));
       return false;
     }
 
     const reopen = await this.feedback.confirm(
-      'Month closed',
-      'That month is closed. Reopen it to save this expense?',
-      'Reopen',
+      this.translate.instant('expense.monthClosedTitle'),
+      this.translate.instant('expense.monthClosedReopenMessage'),
+      this.translate.instant('expense.reopen'),
     );
     if (!reopen) {
       return false;

@@ -1,29 +1,32 @@
 import { Component, Input } from '@angular/core';
-import { IonContent, IonIcon } from '@ionic/angular/standalone';
+import { IonIcon } from '@ionic/angular/standalone';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-auth-shell',
+  // Presentational wrapper only — the host page supplies <ion-content>. Wrapping
+  // ion-content inside this component made it a non-flex child of the page and
+  // collapsed it to zero height on Android WebView.
   template: `
-    <ion-content>
-      <div class="auth-wrap">
-        <div class="brand">
-          <span class="brand-icon"><ion-icon [name]="icon"></ion-icon></span>
-          <h1 class="brand-title">{{ title }}</h1>
-          <p class="label-muted">{{ subtitle }}</p>
-        </div>
-
-        @if (!configured) {
-          <div class="app-card warn">
-            Supabase is not configured yet. Add your project URL and anon key in environment.ts.
-          </div>
-        }
-
-        <ng-content></ng-content>
+    <div class="auth-wrap">
+      <div class="brand">
+        <span class="brand-icon"><ion-icon [name]="icon"></ion-icon></span>
+        <h1 class="brand-title">{{ title }}</h1>
+        <p class="label-muted">{{ subtitle }}</p>
       </div>
-    </ion-content>
+
+      @if (!configured) {
+        <div class="app-card warn">{{ 'auth.notConfigured' | translate }}</div>
+      }
+
+      <ng-content></ng-content>
+    </div>
   `,
   styles: [
     `
+      :host {
+        display: block;
+      }
       .auth-wrap {
         padding: calc(var(--ion-safe-area-top, 0px) + 8vh) 20px 24px;
         max-width: 460px;
@@ -59,7 +62,7 @@ import { IonContent, IonIcon } from '@ionic/angular/standalone';
       }
     `,
   ],
-  imports: [IonContent, IonIcon],
+  imports: [IonIcon, TranslatePipe],
 })
 export class AuthShellComponent {
   @Input() title = '';

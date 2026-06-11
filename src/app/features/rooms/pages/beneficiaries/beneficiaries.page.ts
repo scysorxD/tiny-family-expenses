@@ -6,6 +6,7 @@ import {
   IonContent,
   IonIcon,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Beneficiary } from '../../../../core/models';
 import { BeneficiaryService } from '../../../../core/services/beneficiary.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
@@ -21,7 +22,7 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-beneficiaries',
   template: `
-    <app-page-header title="Beneficiaries" [defaultHref]="backHref">
+    <app-page-header [title]="'beneficiaries.title' | translate" [defaultHref]="backHref">
       <ion-buttons slot="end" end>
         <ion-button (click)="create()" [disabled]="!isAdmin()">
           <ion-icon slot="icon-only" name="add"></ion-icon>
@@ -34,13 +35,13 @@ import { describeError } from '../../../../shared/utils';
       } @else {
         <div class="page-pad">
           @if (!isAdmin()) {
-            <div class="app-card text-muted">Only admins can manage beneficiaries.</div>
+            <div class="app-card text-muted">{{ 'beneficiaries.adminOnly' | translate }}</div>
           } @else if (items().length === 0) {
             <app-empty-state
               icon="person-outline"
-              title="No beneficiaries yet"
-              message="Add who expenses are for, e.g. Mom or Dad."
-              actionLabel="Add beneficiary"
+              [title]="'beneficiaries.emptyTitle' | translate"
+              [message]="'beneficiaries.emptyMessage' | translate"
+              [actionLabel]="'beneficiaries.addAction' | translate"
               (action)="create()"
             ></app-empty-state>
           } @else {
@@ -65,6 +66,7 @@ import { describeError } from '../../../../shared/utils';
     ManagedListComponent,
     AppSkeletonComponent,
     EmptyStateComponent,
+    TranslatePipe,
   ],
 })
 export class BeneficiariesPage {
@@ -72,6 +74,7 @@ export class BeneficiariesPage {
   private readonly service = inject(BeneficiaryService);
   private readonly roomService = inject(RoomService);
   private readonly feedback = inject(FeedbackService);
+  private readonly translate = inject(TranslateService);
 
   readonly items = signal<Beneficiary[]>([]);
   readonly loading = signal(true);
@@ -106,7 +109,11 @@ export class BeneficiariesPage {
   }
 
   async create(): Promise<void> {
-    const name = await this.feedback.prompt('New beneficiary', '', 'e.g. Mom');
+    const name = await this.feedback.prompt(
+      this.translate.instant('beneficiaries.newTitle'),
+      '',
+      this.translate.instant('beneficiaries.newPlaceholder'),
+    );
     if (!name) {
       return;
     }
@@ -119,7 +126,7 @@ export class BeneficiariesPage {
   }
 
   async rename(item: ManagedListItem): Promise<void> {
-    const name = await this.feedback.prompt('Rename beneficiary', item.name);
+    const name = await this.feedback.prompt(this.translate.instant('beneficiaries.renameTitle'), item.name);
     if (!name || name === item.name) {
       return;
     }
@@ -142,9 +149,9 @@ export class BeneficiariesPage {
 
   async remove(item: ManagedListItem): Promise<void> {
     const confirmed = await this.feedback.confirm(
-      'Delete beneficiary',
-      `Delete "${item.name}"? Beneficiaries with expenses cannot be deleted.`,
-      'Delete',
+      this.translate.instant('beneficiaries.deleteTitle'),
+      this.translate.instant('beneficiaries.deleteMessage', { name: item.name }),
+      this.translate.instant('common.delete'),
     );
     if (!confirmed) {
       return;
@@ -152,7 +159,7 @@ export class BeneficiariesPage {
 
     try {
       await this.service.delete(item.id);
-      await this.feedback.success('Beneficiary deleted');
+      await this.feedback.success(this.translate.instant('beneficiaries.deleted'));
       await this.load();
     } catch (error) {
       await this.feedback.error(describeError(error));

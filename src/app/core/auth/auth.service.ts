@@ -26,14 +26,22 @@ export class AuthService {
       return;
     }
 
-    const { data } = await this.supabase.client.auth.getSession();
-    this.currentUser.set(data.session?.user ?? null);
+    try {
+      const { data, error } = await this.supabase.client.auth.getSession();
+      if (error) {
+        console.error('Failed to get Supabase session', error);
+      }
+      this.currentUser.set(data.session?.user ?? null);
 
-    this.supabase.client.auth.onAuthStateChange((_event, session) => {
-      this.currentUser.set(session?.user ?? null);
-    });
-
-    this.initialized.set(true);
+      this.supabase.client.auth.onAuthStateChange((_event, session) => {
+        this.currentUser.set(session?.user ?? null);
+      });
+    } catch (err) {
+      console.error('Failed to restore session', err);
+      this.currentUser.set(null);
+    } finally {
+      this.initialized.set(true);
+    }
   }
 
   get userId(): string | null {
@@ -42,6 +50,12 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return this.currentUser() !== null;
+  }
+
+  isEmailVerified(): boolean {
+    const user = this.currentUser();
+    if (!user) return false;
+    return user.email_confirmed_at != null;
   }
 
   async signUp(email: string, password: string, displayName?: string): Promise<void> {
@@ -55,7 +69,34 @@ export class AuthService {
       throw error;
     }
 
+    // After signup with "Confirm email" enabled, there is no session yet.
+    // The user must verify their email via OTP before getting a session.
     this.currentUser.set(data.session?.user ?? data.user ?? null);
+  }
+
+  async verifyEmailOtp(email: string, token: string): Promise<void> {
+    const { data, error } = await this.supabase.client.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    this.currentUser.set(data.session?.user ?? data.user ?? null);
+  }
+
+  async resendVerification(email: string): Promise<void> {
+    const { error } = await this.supabase.client.auth.resend({
+      type: 'signup',
+      email,
+    });
+
+    if (error) {
+      throw error;
+    }
   }
 
   async signIn(email: string, password: string): Promise<void> {

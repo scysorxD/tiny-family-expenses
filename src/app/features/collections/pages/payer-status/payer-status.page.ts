@@ -10,7 +10,9 @@ import {
   IonRefresher,
   IonRefresherContent,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Period, Room, RoomRole } from '../../../../core/models';
+import { LanguageService } from '../../../../core/i18n';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PayerStatusView, PeriodService } from '../../../../core/services/period.service';
 import { RealtimeService } from '../../../../core/services/realtime.service';
@@ -34,7 +36,7 @@ import {
 @Component({
   selector: 'app-payer-status',
   template: `
-    <app-page-header title="Collections" [defaultHref]="backHref"></app-page-header>
+    <app-page-header [title]="'tabs.collections' | translate" [defaultHref]="backHref"></app-page-header>
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($any($event))">
         <ion-refresher-content></ion-refresher-content>
@@ -48,19 +50,22 @@ import {
           @if (!period() || period()?.status === 'open') {
             <app-empty-state
               icon="lock-closed-outline"
-              title="Month still open"
-              message="Close the month from the Summary screen to track who has paid."
+              [title]="'collections.payerStatus.monthOpenTitle' | translate"
+              [message]="'collections.payerStatus.monthOpenMessage' | translate"
             ></app-empty-state>
           } @else {
             <div class="hero-card">
               <p class="label-muted">{{ label }}</p>
               <div class="amount-hero">{{ format(period()?.systemTotal ?? 0) }}</div>
               <p class="label-muted">
-                {{ format(period()?.systemAmountPerPayer ?? 0) }} each - {{ period()?.payerCount }} payers
+                {{
+                  'collections.payerStatus.eachLine'
+                    | translate: { each: format(period()?.systemAmountPerPayer ?? 0), count: period()?.payerCount }
+                }}
               </p>
             </div>
 
-            <h2 class="section-title">Payers</h2>
+            <h2 class="section-title">{{ 'nav.payers' | translate }}</h2>
             <div class="list-card">
               <ion-list>
                 @for (payer of payers(); track payer.id) {
@@ -72,7 +77,7 @@ import {
                     </ion-label>
                     <app-status-pill
                       slot="end"
-                      [label]="payer.status"
+                      [label]="'collections.payerStatus.status.' + payer.status | translate"
                       [tone]="payer.status === 'paid' ? 'open' : 'muted'"
                       [icon]="payer.status === 'paid' ? 'checkmark-circle' : null"
                     ></app-status-pill>
@@ -81,7 +86,7 @@ import {
               </ion-list>
             </div>
             @if (!isAdmin()) {
-              <p class="label-muted ion-margin-top">Only admins can mark payments.</p>
+              <p class="label-muted ion-margin-top">{{ 'collections.payerStatus.adminOnly' | translate }}</p>
             }
           }
         </div>
@@ -137,6 +142,7 @@ import {
     AppTabBarComponent,
     EmptyStateComponent,
     StatusPillComponent,
+    TranslatePipe,
   ],
 })
 export class PayerStatusPage {
@@ -146,6 +152,7 @@ export class PayerStatusPage {
   private readonly feedback = inject(FeedbackService);
   private readonly modalController = inject(ModalController);
   private readonly realtime = inject(RealtimeService);
+  private readonly language = inject(LanguageService);
 
   private realtimeOff?: () => void;
 
@@ -160,7 +167,7 @@ export class PayerStatusPage {
   private monthKey = toMonthKey(new Date());
 
   get label(): string {
-    return monthLabel(this.monthKey);
+    return monthLabel(this.monthKey, this.language.locale);
   }
 
   get roomId(): string {

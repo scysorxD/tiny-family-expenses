@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { IonButton, IonInput } from '@ionic/angular/standalone';
+import { IonButton, IonContent, IonInput } from '@ionic/angular/standalone';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PreferencesService } from '../../../../core/services/preferences.service';
@@ -12,39 +13,41 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-login',
   template: `
-    <app-auth-shell
-      title="Welcome back"
-      subtitle="Sign in to manage your shared expenses"
-      [configured]="configured"
-    >
-      <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
-        <ion-input
-          fill="outline"
-          label="Email"
-          labelPlacement="stacked"
-          type="email"
-          autocomplete="email"
-          formControlName="email"
-        ></ion-input>
-        <ion-input
-          fill="outline"
-          label="Password"
-          labelPlacement="stacked"
-          type="password"
-          autocomplete="current-password"
-          formControlName="password"
-        ></ion-input>
-        <app-submit-button
-          label="Sign in"
-          type="submit"
-          [loading]="loading()"
-          [disabled]="form.invalid || !configured"
-        ></app-submit-button>
-      </form>
+    <ion-content fullscreen="true">
+      <app-auth-shell
+        [title]="'auth.login.title' | translate"
+        [subtitle]="'auth.login.subtitle' | translate"
+        [configured]="configured"
+      >
+        <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+          <ion-input
+            fill="outline"
+            [label]="'auth.email' | translate"
+            labelPlacement="stacked"
+            type="email"
+            autocomplete="email"
+            formControlName="email"
+          ></ion-input>
+          <ion-input
+            fill="outline"
+            [label]="'auth.password' | translate"
+            labelPlacement="stacked"
+            type="password"
+            autocomplete="current-password"
+            formControlName="password"
+          ></ion-input>
+          <app-submit-button
+            [label]="'auth.login.signIn' | translate"
+            type="submit"
+            [loading]="loading()"
+            [disabled]="form.invalid || !configured"
+          ></app-submit-button>
+        </form>
 
-      <ion-button expand="block" fill="clear" routerLink="/register">Create an account</ion-button>
-      <ion-button expand="block" fill="clear" routerLink="/forgot-password">Forgot password?</ion-button>
-    </app-auth-shell>
+        <ion-button expand="block" fill="clear" routerLink="/register">{{ 'auth.login.createAccount' | translate }}</ion-button>
+        <ion-button expand="block" fill="clear" routerLink="/forgot-password">{{ 'auth.login.forgot' | translate }}</ion-button>
+      </app-auth-shell>
+    </ion-content>
   `,
   styles: [
     `
@@ -59,10 +62,12 @@ import { describeError } from '../../../../shared/utils';
   imports: [
     ReactiveFormsModule,
     RouterLink,
+    IonContent,
     IonInput,
     IonButton,
     AuthShellComponent,
     SubmitButtonComponent,
+    TranslatePipe,
   ],
 })
 export class LoginPage {
@@ -90,6 +95,12 @@ export class LoginPage {
     try {
       const { email, password } = this.form.getRawValue();
       await this.auth.signIn(email, password);
+
+      if (!this.auth.isEmailVerified()) {
+        await this.router.navigateByUrl(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
+
       const lastRoom = await this.preferences.getLastRoomId();
       await this.router.navigateByUrl(lastRoom ? `/rooms/${lastRoom}` : '/rooms');
     } catch (error) {

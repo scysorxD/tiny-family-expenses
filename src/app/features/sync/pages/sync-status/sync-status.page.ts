@@ -14,7 +14,9 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Room, RoomRole, SyncQueueItem } from '../../../../core/models';
+import { LanguageService } from '../../../../core/i18n';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { PeriodService } from '../../../../core/services/period.service';
 import { RoomService } from '../../../../core/services/room.service';
@@ -49,7 +51,7 @@ interface QueueRow {
         <ion-buttons slot="start">
           <ion-back-button [defaultHref]="backHref"></ion-back-button>
         </ion-buttons>
-        <ion-title>Sync status</ion-title>
+        <ion-title>{{ 'nav.syncStatus' | translate }}</ion-title>
         <ion-buttons slot="end">
           <ion-button (click)="syncAll()" [disabled]="sync.syncing()">
             <ion-icon slot="icon-only" name="sync-outline"></ion-icon>
@@ -63,13 +65,13 @@ interface QueueRow {
       } @else if (rows().length === 0) {
         <app-empty-state
           icon="cloud-done-outline"
-          title="Everything is synced"
-          message="There are no pending changes or conflicts."
+          [title]="'sync.syncedTitle' | translate"
+          [message]="'sync.syncedMessage' | translate"
         ></app-empty-state>
       } @else {
         <div class="page-pad">
           @if (conflicts().length > 0) {
-            <h2 class="section-title">Conflicts</h2>
+            <h2 class="section-title">{{ 'sync.conflicts' | translate }}</h2>
             <div class="list-card">
               <ion-list>
                 @for (row of conflicts(); track row.item.localId) {
@@ -87,7 +89,7 @@ interface QueueRow {
           }
 
           @if (others().length > 0) {
-            <h2 class="section-title">Pending changes</h2>
+            <h2 class="section-title">{{ 'sync.pendingChanges' | translate }}</h2>
             <div class="list-card">
               <ion-list>
                 @for (row of others(); track row.item.localId) {
@@ -134,6 +136,7 @@ interface QueueRow {
     AppSkeletonComponent,
     EmptyStateComponent,
     StatusPillComponent,
+    TranslatePipe,
   ],
 })
 export class SyncStatusPage {
@@ -142,6 +145,8 @@ export class SyncStatusPage {
   private readonly periodService = inject(PeriodService);
   private readonly feedback = inject(FeedbackService);
   private readonly actionSheet = inject(ActionSheetController);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
   readonly sync = inject(SyncQueueService);
 
   readonly room = signal<Room | null>(null);
@@ -206,24 +211,34 @@ export class SyncStatusPage {
     return {
       item,
       title,
-      subtitle: parts.join(' · ') || 'Waiting to sync',
+      subtitle: parts.join(' · ') || this.translate.instant('sync.waiting'),
       monthKey,
       tone: item.status === 'conflict' ? 'danger' : item.status === 'sync_failed' ? 'warning' : 'muted',
-      statusLabel: item.status === 'sync_failed' ? 'failed' : item.status.replace('_sync', ''),
+      statusLabel: this.statusLabelFor(item),
     };
   }
 
+  private statusLabelFor(item: SyncQueueItem): string {
+    const key =
+      item.status === 'sync_failed'
+        ? 'failed'
+        : item.status === 'pending_sync'
+          ? 'pending'
+          : item.status;
+    return this.translate.instant('sync.status.' + key);
+  }
+
   private titleFor(item: SyncQueueItem): string {
-    const noun = item.entityType.charAt(0).toUpperCase() + item.entityType.slice(1);
+    const entity = this.translate.instant('sync.entity.' + item.entityType);
     switch (item.operation) {
       case 'create':
-        return `New ${item.entityType}`;
+        return this.translate.instant('sync.title.create', { entity });
       case 'update':
-        return `Edited ${item.entityType}`;
+        return this.translate.instant('sync.title.update', { entity });
       case 'delete':
-        return `Deleted ${item.entityType}`;
+        return this.translate.instant('sync.title.delete', { entity });
       default:
-        return noun;
+        return entity;
     }
   }
 
@@ -233,22 +248,28 @@ export class SyncStatusPage {
 
   async openActions(row: QueueRow): Promise<void> {
     const buttons: ActionSheetButton[] = [
-      { text: 'Retry now', icon: 'refresh-outline', handler: () => void this.retry(row) },
+      {
+        text: this.translate.instant('sync.retryNow'),
+        icon: 'refresh-outline',
+        handler: () => void this.retry(row),
+      },
     ];
     if (this.role() === 'admin' && row.monthKey && row.item.status === 'conflict') {
       buttons.push({
-        text: `Reopen ${monthLabel(row.monthKey)} & retry`,
+        text: this.translate.instant('sync.reopenRetry', {
+          month: monthLabel(row.monthKey, this.language.locale),
+        }),
         icon: 'lock-closed-outline',
         handler: () => void this.reopenAndRetry(row),
       });
     }
     buttons.push({
-      text: 'Discard change',
+      text: this.translate.instant('sync.discardChange'),
       role: 'destructive',
       icon: 'trash-outline',
       handler: () => void this.discard(row),
     });
-    buttons.push({ text: 'Cancel', role: 'cancel' });
+    buttons.push({ text: this.translate.instant('common.cancel'), role: 'cancel' });
 
     const sheet = await this.actionSheet.create({ header: row.title, buttons });
     await sheet.present();
@@ -270,7 +291,7 @@ export class SyncStatusPage {
     try {
       await this.periodService.reopenPeriod(this.roomId, row.monthKey);
       await this.sync.retry(row.item);
-      await this.feedback.success('Month reopened and change re-synced');
+      await this.feedback.success(this.translate.instant('sync.reopenedResynced'));
     } catch (error) {
       await this.feedback.error(describeError(error));
     }
@@ -279,9 +300,9 @@ export class SyncStatusPage {
 
   private async discard(row: QueueRow): Promise<void> {
     const confirmed = await this.feedback.confirm(
-      'Discard change',
-      'This pending change will be removed and not synced. Continue?',
-      'Discard',
+      this.translate.instant('sync.discardChange'),
+      this.translate.instant('sync.discardConfirm'),
+      this.translate.instant('sync.discard'),
     );
     if (!confirmed) {
       return;

@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { NavigationError, Router } from '@angular/router';
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
@@ -66,8 +67,10 @@ export class AppComponent {
   private readonly localDatabase = inject(LocalDatabaseService);
   private readonly auth = inject(AuthService);
   private readonly syncQueue = inject(SyncQueueService);
+  private readonly router = inject(Router);
 
   constructor() {
+    this.logNavigationErrors();
     addIcons({
       add,
       addCircleOutline,
@@ -125,6 +128,14 @@ export class AppComponent {
     if (Capacitor.isNativePlatform()) {
       void this.initNative();
     }
+  }
+
+  private logNavigationErrors(): void {
+    this.router.events.subscribe((event) => {
+      if (event instanceof NavigationError) {
+        console.error('Navigation error', event.url, event.error);
+      }
+    });
   }
 
   private async initNative(): Promise<void> {

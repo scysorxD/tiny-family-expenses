@@ -8,6 +8,7 @@ import {
   IonInput,
   IonSpinner,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { SupabaseService } from '../../../../core/services/supabase.service';
@@ -23,14 +24,14 @@ import { describeError } from '../../../../shared/utils';
         } @else if (ready()) {
           <div class="brand">
             <span class="brand-icon"><ion-icon name="key-outline"></ion-icon></span>
-            <h1 class="brand-title">Set a new password</h1>
-            <p class="label-muted">Choose a new password for your account.</p>
+            <h1 class="brand-title">{{ 'auth.reset.title' | translate }}</h1>
+            <p class="label-muted">{{ 'auth.reset.subtitle' | translate }}</p>
           </div>
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
             <ion-input
               fill="outline"
-              label="New password"
+              [label]="'auth.reset.newPassword' | translate"
               labelPlacement="stacked"
               type="password"
               autocomplete="new-password"
@@ -38,7 +39,7 @@ import { describeError } from '../../../../shared/utils';
             ></ion-input>
             <ion-input
               fill="outline"
-              label="Confirm password"
+              [label]="'auth.reset.confirmPassword' | translate"
               labelPlacement="stacked"
               type="password"
               autocomplete="new-password"
@@ -48,18 +49,18 @@ import { describeError } from '../../../../shared/utils';
               @if (loading()) {
                 <ion-spinner name="dots"></ion-spinner>
               } @else {
-                Update password
+                {{ 'auth.reset.submit' | translate }}
               }
             </ion-button>
           </form>
         } @else {
           <div class="brand">
             <span class="brand-icon warn-icon"><ion-icon name="warning-outline"></ion-icon></span>
-            <h1 class="brand-title">Link not valid</h1>
+            <h1 class="brand-title">{{ 'auth.reset.invalidTitle' | translate }}</h1>
             <p class="label-muted">{{ errorMessage() }}</p>
           </div>
           <ion-button expand="block" fill="outline" routerLink="/forgot-password">
-            Request a new link
+            {{ 'auth.reset.requestNew' | translate }}
           </ion-button>
         }
       </div>
@@ -107,7 +108,16 @@ import { describeError } from '../../../../shared/utils';
       }
     `,
   ],
-  imports: [ReactiveFormsModule, RouterLink, IonContent, IonInput, IonButton, IonIcon, IonSpinner],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    IonContent,
+    IonInput,
+    IonButton,
+    IonIcon,
+    IonSpinner,
+    TranslatePipe,
+  ],
 })
 export class ResetPasswordPage implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
@@ -115,11 +125,12 @@ export class ResetPasswordPage implements OnInit {
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackService);
   private readonly supabase = inject(SupabaseService);
+  private readonly translate = inject(TranslateService);
 
   readonly checking = signal(true);
   readonly ready = signal(false);
   readonly loading = signal(false);
-  readonly errorMessage = signal('This password reset link is invalid or has expired.');
+  readonly errorMessage = signal('');
 
   readonly form = this.formBuilder.nonNullable.group({
     password: ['', [Validators.required, Validators.minLength(6)]],
@@ -127,8 +138,10 @@ export class ResetPasswordPage implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    this.errorMessage.set(this.translate.instant('auth.reset.invalidDefault'));
+
     if (!this.supabase.isConfigured) {
-      this.errorMessage.set('Supabase is not configured.');
+      this.errorMessage.set(this.translate.instant('auth.reset.notConfigured'));
       this.checking.set(false);
       return;
     }
@@ -171,14 +184,14 @@ export class ResetPasswordPage implements OnInit {
 
     const { password, confirm } = this.form.getRawValue();
     if (password !== confirm) {
-      await this.feedback.error('Passwords do not match.');
+      await this.feedback.error(this.translate.instant('auth.reset.passwordsNoMatch'));
       return;
     }
 
     this.loading.set(true);
     try {
       await this.auth.updatePassword(password);
-      await this.feedback.success('Password updated');
+      await this.feedback.success(this.translate.instant('auth.reset.updated'));
       await this.router.navigateByUrl('/rooms');
     } catch (error) {
       await this.feedback.error(describeError(error));

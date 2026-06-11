@@ -7,6 +7,7 @@ import {
   IonLabel,
   IonList,
 } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { CategoryIconComponent } from '../ui';
 
 export interface ManagedListItem {
@@ -29,7 +30,7 @@ export interface ManagedListItem {
             }
             <ion-label [class.inactive]="!item.isActive">{{ item.name }}</ion-label>
             @if (!item.isActive) {
-              <ion-badge slot="end" color="medium">inactive</ion-badge>
+              <ion-badge slot="end" color="medium">{{ 'common.inactive' | translate }}</ion-badge>
             }
             <ion-icon slot="end" name="ellipsis-vertical" class="row-more"></ion-icon>
           </ion-item>
@@ -37,7 +38,7 @@ export interface ManagedListItem {
       </ion-list>
     </div>
   `,
-  imports: [IonList, IonItem, IonLabel, IonBadge, IonIcon, CategoryIconComponent],
+  imports: [IonList, IonItem, IonLabel, IonBadge, IonIcon, CategoryIconComponent, TranslatePipe],
 })
 export class ManagedListComponent {
   @Input() items: ManagedListItem[] = [];
@@ -49,19 +50,21 @@ export class ManagedListComponent {
   @Output() delete = new EventEmitter<ManagedListItem>();
 
   private readonly actionSheet = inject(ActionSheetController);
+  private readonly translate = inject(TranslateService);
 
   async openActions(item: ManagedListItem): Promise<void> {
+    const t = (key: string): string => this.translate.instant(key);
     const sheet = await this.actionSheet.create({
       header: item.name,
       buttons: [
-        { text: 'Rename', icon: 'create-outline', handler: () => this.rename.emit(item) },
+        { text: t('common.rename'), icon: 'create-outline', handler: () => this.rename.emit(item) },
         {
-          text: item.isActive ? 'Deactivate' : 'Activate',
+          text: item.isActive ? t('common.deactivate') : t('common.activate'),
           icon: item.isActive ? 'close-outline' : 'checkmark-circle-outline',
           handler: () => this.toggleActive.emit(item),
         },
-        { text: 'Delete', role: 'destructive', icon: 'trash-outline', handler: () => this.delete.emit(item) },
-        { text: 'Cancel', role: 'cancel' },
+        { text: t('common.delete'), role: 'destructive', icon: 'trash-outline', handler: () => this.delete.emit(item) },
+        { text: t('common.cancel'), role: 'cancel' },
       ],
     });
     await sheet.present();

@@ -1,4 +1,5 @@
 import { Component, Input, computed, signal } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface BarDatum {
   label: string;
@@ -15,7 +16,7 @@ interface Bar {
   selector: 'app-bar-trend',
   template: `
     @if (bars().length === 0) {
-      <p class="label-muted">No data.</p>
+      <p class="label-muted">{{ 'common.noData' | translate }}</p>
     } @else {
       <div class="bars">
         @for (bar of bars(); track bar.label; let last = $last) {
@@ -68,6 +69,7 @@ interface Bar {
       }
     `,
   ],
+  imports: [TranslatePipe],
 })
 export class BarTrendComponent {
   private readonly _data = signal<BarDatum[]>([]);

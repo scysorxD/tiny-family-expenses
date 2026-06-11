@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { IonButton, IonInput } from '@ionic/angular/standalone';
+import { IonButton, IonContent, IonInput } from '@ionic/angular/standalone';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { FeedbackService } from '../../../../core/services/feedback.service';
 import { SupabaseService } from '../../../../core/services/supabase.service';
@@ -11,44 +12,46 @@ import { describeError } from '../../../../shared/utils';
 @Component({
   selector: 'app-register',
   template: `
-    <app-auth-shell
-      title="Create your account"
-      subtitle="Start tracking shared expenses together"
-      [configured]="configured"
-    >
-      <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
-        <ion-input
-          fill="outline"
-          label="Display name"
-          labelPlacement="stacked"
-          formControlName="displayName"
-        ></ion-input>
-        <ion-input
-          fill="outline"
-          label="Email"
-          labelPlacement="stacked"
-          type="email"
-          autocomplete="email"
-          formControlName="email"
-        ></ion-input>
-        <ion-input
-          fill="outline"
-          label="Password"
-          labelPlacement="stacked"
-          type="password"
-          autocomplete="new-password"
-          formControlName="password"
-        ></ion-input>
-        <app-submit-button
-          label="Create account"
-          type="submit"
-          [loading]="loading()"
-          [disabled]="form.invalid || !configured"
-        ></app-submit-button>
-      </form>
+    <ion-content fullscreen="true">
+      <app-auth-shell
+        [title]="'auth.register.title' | translate"
+        [subtitle]="'auth.register.subtitle' | translate"
+        [configured]="configured"
+      >
+        <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+          <ion-input
+            fill="outline"
+            [label]="'auth.register.displayName' | translate"
+            labelPlacement="stacked"
+            formControlName="displayName"
+          ></ion-input>
+          <ion-input
+            fill="outline"
+            [label]="'auth.email' | translate"
+            labelPlacement="stacked"
+            type="email"
+            autocomplete="email"
+            formControlName="email"
+          ></ion-input>
+          <ion-input
+            fill="outline"
+            [label]="'auth.password' | translate"
+            labelPlacement="stacked"
+            type="password"
+            autocomplete="new-password"
+            formControlName="password"
+          ></ion-input>
+          <app-submit-button
+            [label]="'auth.register.submit' | translate"
+            type="submit"
+            [loading]="loading()"
+            [disabled]="form.invalid || !configured"
+          ></app-submit-button>
+        </form>
 
-      <ion-button expand="block" fill="clear" routerLink="/login">I already have an account</ion-button>
-    </app-auth-shell>
+        <ion-button expand="block" fill="clear" routerLink="/login">{{ 'auth.register.haveAccount' | translate }}</ion-button>
+      </app-auth-shell>
+    </ion-content>
   `,
   styles: [
     `
@@ -63,10 +66,12 @@ import { describeError } from '../../../../shared/utils';
   imports: [
     ReactiveFormsModule,
     RouterLink,
+    IonContent,
     IonInput,
     IonButton,
     AuthShellComponent,
     SubmitButtonComponent,
+    TranslatePipe,
   ],
 })
 export class RegisterPage {
@@ -75,6 +80,7 @@ export class RegisterPage {
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackService);
   private readonly supabase = inject(SupabaseService);
+  private readonly translate = inject(TranslateService);
 
   readonly loading = signal(false);
   readonly configured = this.supabase.isConfigured;
@@ -95,11 +101,12 @@ export class RegisterPage {
       const { email, password, displayName } = this.form.getRawValue();
       await this.auth.signUp(email, password, displayName);
 
-      if (this.auth.isAuthenticated()) {
+      if (this.auth.isEmailVerified()) {
+        // Auto-confirmed (e.g. email confirmation disabled in Supabase)
         await this.router.navigateByUrl('/rooms');
       } else {
-        await this.feedback.success('Account created. Please confirm your email, then sign in.');
-        await this.router.navigateByUrl('/login');
+        // Navigate to verify-email screen with email as query param
+        await this.router.navigateByUrl(`/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       await this.feedback.error(describeError(error));

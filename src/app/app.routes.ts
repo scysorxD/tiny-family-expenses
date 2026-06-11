@@ -1,10 +1,11 @@
 import { Routes } from '@angular/router';
-import { authGuard, publicOnlyGuard } from './core/guards/auth.guard';
+import { authGuard, entryRedirectGuard, publicOnlyGuard, verifiedGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
+    canActivate: [entryRedirectGuard],
     loadComponent: () => import('./features/shell/pages/entry/entry.page').then((m) => m.EntryPage),
   },
   {
@@ -18,6 +19,14 @@ export const routes: Routes = [
     canActivate: [publicOnlyGuard],
     loadComponent: () =>
       import('./features/auth/pages/register/register.page').then((m) => m.RegisterPage),
+  },
+  {
+    path: 'verify-email',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/auth/pages/verify-email/verify-email.page').then(
+        (m) => m.VerifyEmailPage,
+      ),
   },
   {
     path: 'forgot-password',
@@ -34,34 +43,26 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'invite',
-    canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/rooms/pages/accept-invite/accept-invite.page').then(
-        (m) => m.AcceptInvitePage,
-      ),
-  },
-  {
     path: 'rooms',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/rooms/pages/room-list/room-list.page').then((m) => m.RoomListPage),
   },
   {
     path: 'rooms/new',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/rooms/pages/room-create/room-create.page').then((m) => m.RoomCreatePage),
   },
   {
     path: 'rooms/:roomId',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/rooms/pages/room-main/room-main.page').then((m) => m.RoomMainPage),
   },
   {
     path: 'rooms/:roomId/summary',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/periods/pages/period-summary/period-summary.page').then(
         (m) => m.PeriodSummaryPage,
@@ -69,7 +70,7 @@ export const routes: Routes = [
   },
   {
     path: 'rooms/:roomId/categories',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/categories/pages/category-list/category-list.page').then(
         (m) => m.CategoryListPage,
@@ -77,7 +78,7 @@ export const routes: Routes = [
   },
   {
     path: 'rooms/:roomId/settings',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/rooms/pages/room-settings/room-settings.page').then(
         (m) => m.RoomSettingsPage,
@@ -85,7 +86,7 @@ export const routes: Routes = [
   },
   {
     path: 'rooms/:roomId/members',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/rooms/pages/room-members/room-members.page').then(
         (m) => m.RoomMembersPage,
@@ -93,7 +94,7 @@ export const routes: Routes = [
   },
   {
     path: 'rooms/:roomId/beneficiaries',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/rooms/pages/beneficiaries/beneficiaries.page').then(
         (m) => m.BeneficiariesPage,
@@ -101,13 +102,13 @@ export const routes: Routes = [
   },
   {
     path: 'rooms/:roomId/payers',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/rooms/pages/payers/payers.page').then((m) => m.PayersPage),
   },
   {
     path: 'rooms/:roomId/collections',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/collections/pages/payer-status/payer-status.page').then(
         (m) => m.PayerStatusPage,
@@ -115,7 +116,7 @@ export const routes: Routes = [
   },
   {
     path: 'rooms/:roomId/message',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/collections/pages/collection-message/collection-message.page').then(
         (m) => m.CollectionMessagePage,
@@ -123,13 +124,13 @@ export const routes: Routes = [
   },
   {
     path: 'rooms/:roomId/dashboard',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/dashboard/pages/dashboard/dashboard.page').then((m) => m.DashboardPage),
   },
   {
     path: 'rooms/:roomId/sync',
-    canActivate: [authGuard],
+    canActivate: [verifiedGuard],
     loadComponent: () =>
       import('./features/sync/pages/sync-status/sync-status.page').then((m) => m.SyncStatusPage),
   },
